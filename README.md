@@ -6,15 +6,19 @@ of hurricane location and maximum sustained wind speed. Results may be generated
 a single site or an entire region. Hurricane track and intensity data may be imported
 directly from the US National Hurricane Center's HURDAT2 database.
 
-HURRECON is available in both R (HurreconR) and Python (HurreconPython). The R version 
-currently provides better performance. The model is an updated version of the original
-HURRECON model written in Borland Pascal for use with Idrisi (see below for details).
+HURRECON is available in both R (HurreconR) and Python (HurreconPython) versions. 
+The R version currently provides better performance. The model is an updated version 
+of the original HURRECON model written in Borland Pascal for use with Idrisi 
+(see below for details).
+
+Please note: both versions are currently under development and subject to change.
 
 ## Getting Started
 
-All model functions begin with "hurrecon". Input CSV files have a single header
-line that contains variable names. Cover types are water (1) and land (2). The 
-following measurement units are used throughout:
+All user functions begin with "hurrecon". Input CSV files have a single header
+line that contains variable names (see input file examples). Model results are 
+generated for two cover types: water and land. All datetimes are assumed to be 
+UTC (GMT). The following measurement units are used throughout:
 
 ```{r}
 latitude, longitude, bearing, direction - degrees
@@ -23,8 +27,8 @@ speed - meters/second
 time - minutes
 ```
 
-Results for a given set of model runs are stored on a single directory (hur_dir)
-with the following subdirectories:
+The user specifies a directory (hur_dir) for a given set of model runs. Input
+and output files are stored on the following subdirectories of this directory:
 
 ```{r}
 hur_dir/gis
@@ -33,9 +37,9 @@ hur_dir/region
 hur_dir/site
 ```
 
-The input subdirectory contains input files. Site and regional output files are 
-saved to the site and region subdirectories, respectively. Shapefiles that contain
-geographic and politcal boundaries for viewing regional results are stored on the 
+The input subdirectory contains input files. The site and region subdirectories
+contain site and regional output files, respectively. Shapefiles that contain
+geographic and political boundaries for viewing regional results are stored on the 
 gis subdirectory.
 
 The following input files are required:
@@ -48,6 +52,8 @@ parameters.csv
 land-water.tif
 boundary.*
 ```
+
+All files (except boundary files) are located on the input subdirectory.
 
 The sites file contains the name, location, and cover type (water = 1, land = 2)
 of each study site. Variables: site_name, latitude, longitude, cover_type.
@@ -67,15 +73,20 @@ hurrecon_extract_tracks function to create ids.csv and tracks.csv.
 
 The parameters file contains model parameters (radius of maximum winds and profile
 exponent) for all hurricanes and (optionally) for individual hurricanes. Variables:
-hur_id, rmw, s_par. The file must contain at least one record for default values
-where hur_id = ALL.
+hur_id, rmw, s_par. This file must contain at least one record (hur_id = ALL) that 
+specifies the default values of rmw and s_par.
 
-The land-water file is a GeoTiff file that specifies the cover type (water = 1, 
-land = 2) for each cell across a region. The geographic coordinates and number of 
-rows and columns of the land-water file are used for regional modeling.
+The land-water file is a raster GeoTiff file that specifies the cover type 
+(water = 1, land = 2) for each cell across a region. The geographic coordinates 
+and number of rows and columns of the land-water file are used to set the geographic
+window and spatial resolution for regional modeling.
 
 The boundary files are vector shapefiles that are used for creating maps of regional
 results. Files must be renamed so the first name of each file is "boundary".
+These files are located on the gis subdirectory.
+
+Examples of input files may be found on the inst/extdata subdirectory (R) or data
+subdirectory (Python).
 
 To run the model, create the above directories, copy the input files to their
 respective subdirectories, and source hurrecon.R (R) or hurrecon.py (Python). 
@@ -107,7 +118,6 @@ hurrecon_model_region_all
 hurrecon_summarize_land_water
 hurrecon_summarize_tracks
 hurrecon_summarize_site
-hurrecon_summarize_region
 
 hurrecon_plot_site_ts
 hurrecon_plot_site_xy
@@ -146,17 +156,14 @@ of these values: 1, 2, 3, 5, 10, 15, 30, or 60 minutes.
 The hurrecon_summarize_land_water function displays features of the current
 land-water file. The hurrecon_summarize_tracks function displays features of
 the current ids and tracks files. The hurrecon_summarize_site function displays
-summary values for a single hurricane and a single site. The hurrecon_summarize_region
-function summarizes results for all hurricanes for a given region.
+summary values for a single hurricane and a single site.
 
 The hurrecon_plot_site functions create a time series plot of wind speed, gust
 speed, or wind direction for a single hurricane (ts), a scatter plot of wind
 or gust speed as a function of wind direction (xy), or a time series plot of peak
 wind speed, gust speed, or wind direction for all hurricanes for a given site 
 (all). The hurrecon_plot_region functions create maps of regional results 
-for a single hurricane or for all hurricanes. Note that if new regional output
-is generated, the hurrecon_summarize_region function must be run to update summary
-results before using hurrecon_plot_region_all.
+for a single hurricane or for all hurricanes.
 
 ## Examples
 
@@ -178,7 +185,6 @@ hurrecon_model_region_all()
 hurrecon_summarize_land_water()
 hurrecon_summarize_tracks()
 hurrecon_summarize_site("AL031935", "Miami FL")
-hurrecon_summarize_region()
 
 hurrecon_plot_site_ts("AL031935", "Miami FL")
 hurrecon_plot_site_xy("AL031935", "Miami FL")

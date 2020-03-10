@@ -110,7 +110,7 @@ def format_time_difference_ms(start_time, end_time):
 # check_file_exists displays an error message and stops execution if
 # the specified file does not exist.
 #   file_name - name of file
-#   returns nothing
+#   no return value
 
 def check_file_exists(file_name):
 	if os.path.exists(file_name) == False or os.path.isfile(file_name) == False:
@@ -1006,6 +1006,129 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 
 	return [ss, ff, dd, cc, gg, hh]
 
+# get_regional_summary compiles regional results for all hurricanes.
+# Results are saved in a GeoTiff file (summary.tif) with 7 layers and in
+# a CSV file of hurricane ids and maximum enhanced Fujita scale values
+# (summary.csv) on the region subdirectory.
+#   no return value
+
+def get_regional_summary():
+	# get current working directory
+	cwd = os.getcwd()
+
+	# read ids file
+	ids_file = cwd + "/input/ids.csv"
+	check_file_exists(ids_file)
+	ii = pd.read_csv(ids_file)
+	ii_rows = len(ii)
+
+	# read land-water file
+	land_water_file = cwd + "/input/land_water.tif"
+	check_file_exists(land_water_file)
+	land_water = rio.open(land_water_file)
+
+	# get regional values
+	nrows = land_water.height
+	ncols = land_water.width
+
+	# create lists for peak Fujita value across region
+	hur_id_seq = []
+	efmax_seq = []
+
+	# create arrays for peak wind speed & direction
+	efm = np.zeros((nrows, ncols), dtype=np.int16)
+	ef0 = np.zeros((nrows, ncols), dtype=np.int16)
+	ef1 = np.zeros((nrows, ncols), dtype=np.int16)
+	ef2 = np.zeros((nrows, ncols), dtype=np.int16)
+	ef3 = np.zeros((nrows, ncols), dtype=np.int16)
+	ef4 = np.zeros((nrows, ncols), dtype=np.int16)
+	ef5 = np.zeros((nrows, ncols), dtype=np.int16)
+
+	# record values for each hurricane
+	for i in range(0, ii_rows):
+		# get hurricane id
+		hur_id = ii.hur_id[i]
+
+		# read regional hurricane file in Geotiff format
+		hur_tif_file = cwd + "/region/" + hur_id + ".tif"
+		check_file_exists(hur_tif_file)
+		hur_tif = rio.open(hur_tif_file)
+
+		# get enhanced Fujita scale layer
+		ff_array = hur_tif.read(2) # enhanced Fujita scale
+
+		# update peak Fujita value
+		efmax = np.amax(ff_array) - 2
+
+		hur_id_seq.append(hur_id)
+		efmax_seq.append(efmax)
+
+		# update enhanced Fujita scale
+		for j in range(0, nrows):
+			for k in range(0, ncols):
+				val = ff_array[j, k]
+
+				if val > 0 and efm[j, k] < val:
+					efm[j, k] = val
+ 
+				if val == 2:
+					ef0[j, k] = ef0[j, k] + 1
+      
+				elif val == 3:
+					ef0[j, k] = ef0[j, k] + 1
+					ef1[j, k] = ef1[j, k] + 1
+      
+				elif val == 4:
+					ef0[j, k] = ef0[j, k] + 1
+					ef1[j, k] = ef1[j, k] + 1
+					ef2[j, k] = ef2[j, k] + 1
+
+				elif val == 5:
+					ef0[j, k] = ef0[j, k] + 1
+					ef1[j, k] = ef1[j, k] + 1
+					ef2[j, k] = ef2[j, k] + 1
+					ef3[j, k] = ef3[j, k] + 1
+        
+				elif val == 6:
+					ef0[j, k] = ef0[j, k] + 1
+					ef1[j, k] = ef1[j, k] + 1
+					ef2[j, k] = ef2[j, k] + 1
+					ef3[j, k] = ef3[j, k] + 1
+					ef4[j, k] = ef4[j, k] + 1          
+
+				elif val == 7:
+					ef0[j, k] = ef0[j, k] + 1
+					ef1[j, k] = ef1[j, k] + 1
+					ef2[j, k] = ef2[j, k] + 1
+					ef3[j, k] = ef3[j, k] + 1
+					ef4[j, k] = ef4[j, k] + 1          
+					ef5[j, k] = ef5[j, k] + 1          
+
+	# save to csv file
+	peak_cols = ['hur_id', 'efmax']
+	peak = pd.DataFrame(data=list(zip(hur_id_seq, efmax_seq)), columns=peak_cols)
+
+	peak_file = cwd + "/region/summary.csv"
+	peak.to_csv(peak_file, index=False)
+
+	# save to GeoTiff file
+	sum_tif_file = cwd + "/region/summary.tif"
+
+	profile = land_water.profile
+	profile.update(dtype='int16', nodata=-9999, count=7)
+
+	sum_tif = rio.open(sum_tif_file, 'w', **profile)
+
+	sum_tif.write(efm, 1)
+	sum_tif.write(ef0, 2)
+	sum_tif.write(ef1, 3)
+	sum_tif.write(ef2, 4)
+	sum_tif.write(ef3, 5)
+	sum_tif.write(ef4, 6)
+	sum_tif.write(ef5, 7)
+
+	sum_tif.close()
+
 # get_track_lat_lon returns a data frame of track data for the specified hurricane
 # if the maximum enhanced Fujita value exceeds a specified value.
 #   hur_id - hurricane id
@@ -1034,7 +1157,7 @@ def get_track_lat_lon(hur_id, fuj_min, tt, kk):
 
 #' hurrecon_set_path sets the path for the current set of model runs.
 #'   hur_path - path for current model runs
-#'   returns nothing
+#'   no return value
 
 def hurrecon_set_path(hur_path):
 	if hur_path == "":
@@ -1059,7 +1182,7 @@ def hurrecon_set_path(hur_path):
 #   xmx - maximum longitude (degrees)
 #   ymn - minimum latitude (degrees)
 #   ymx - maximum latitude (degrees)
-#   returns nothing
+#   no return value
 
 def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx):
 	# get current working directory
@@ -1130,7 +1253,7 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx):
 # from HURDAT2 plus columns for standard datetime and Julian day with fraction.
 #   hurdat2_file - name of HURDAT2 file
 #   path - optional path for HURDAT2 file
-#   returns nothing
+#   no return value
 
 def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 	# output files
@@ -1268,7 +1391,7 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 #     land-water file (degrees)
 #   wind_min - minimum value of maximum sustained wind speed 
 #     (meters/second)
-#   returns nothing
+#   no return value
 
 def hurrecon_extract_tracks(margin=0, wind_min=33):
 	# get current working directory
@@ -1504,7 +1627,7 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	ef4_seq = []
 	ef5_seq = []
 
-	# record total elasped time if timing is TRUE
+	# record total elasped time if timing is True
 	if timing == True:
 		start_time = time.time()
 
@@ -1640,11 +1763,12 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 # if available. If no value is provided for time step, the time step is 
 # calculated. If water is False, results are calculated for land areas only.
 # Results for each hurricane are saved in a GeoTiff file on the region 
-# subdirectory.
+# subdirectory. Summary results for all hurricanes (summary.tif, summary.csv)
+# are also calculated and saved to the region subdirectory.
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate results over water
-#   returns nothing
+#   no return value
 
 def hurrecon_model_region_all(width=False, time_step="", water=False):
 	# get current working directory
@@ -1676,6 +1800,9 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 		# generate & save regional results
 		hurrecon_model_region(hur_id, width, time_step, water, save=True, timing=False)
 
+	# generate & save regional summary files
+	get_regional_summary()
+
 	# display total elapsed time
 	elapsed_time = format_time_difference_hms(start_time, time.time())
 	print("\r", elapsed_time, "\n", end="")
@@ -1685,7 +1812,7 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 
 # hurrecon_summarize_land_water displays features of the current land-water
 # file (land_water.tif) in the console.
-#   returns nothing
+#   no return value
 
 def hurrecon_summarize_land_water():
 	# get current working directory
@@ -1725,7 +1852,7 @@ def hurrecon_summarize_land_water():
 
 # hurrecon_summarize_tracks displays features of the current ids file 
 # (ids.csv) in the console.
-#   returns nothing
+#   no return value
 
 def hurrecon_summarize_tracks():
 	# get current working directory
@@ -1751,7 +1878,7 @@ def hurrecon_summarize_tracks():
 # and site in the console.
 #   hur_id - hurricane id
 #   site_name - name of site
-#   returns nothing
+#   no return value
 
 def hurrecon_summarize_site(hur_id, site_name):
 	# get current working directory
@@ -1787,131 +1914,6 @@ def hurrecon_summarize_site(hur_id, site_name):
 	if pk.ef5[0] > 0:
 		print("EF5:", round(pk.ef5[0], 1), "hours")
 
-# hurrecon_summarize_region compiles regional results for all hurricanes.
-# Results are saved in a GeoTiff file (summary.tif) with 7 layers and in
-# a CSV file of hurricane ids and maximum enhanced Fujita scale values
-# (summary.csv) on the region subdirectory. This function should be run
-# whenever new regional results are generated before using the plotting
-# function hurrecon_plot_region_all.
-#   returns nothing
-
-def hurrecon_summarize_region():
-	# get current working directory
-	cwd = os.getcwd()
-
-	# read ids file
-	ids_file = cwd + "/input/ids.csv"
-	check_file_exists(ids_file)
-	ii = pd.read_csv(ids_file)
-	ii_rows = len(ii)
-
-	# read land-water file
-	land_water_file = cwd + "/input/land_water.tif"
-	check_file_exists(land_water_file)
-	land_water = rio.open(land_water_file)
-
-	# get regional values
-	nrows = land_water.height
-	ncols = land_water.width
-
-	# create lists for peak Fujita value across region
-	hur_id_seq = []
-	efmax_seq = []
-
-	# create arrays for peak wind speed & direction
-	efm = np.zeros((nrows, ncols), dtype=np.int16)
-	ef0 = np.zeros((nrows, ncols), dtype=np.int16)
-	ef1 = np.zeros((nrows, ncols), dtype=np.int16)
-	ef2 = np.zeros((nrows, ncols), dtype=np.int16)
-	ef3 = np.zeros((nrows, ncols), dtype=np.int16)
-	ef4 = np.zeros((nrows, ncols), dtype=np.int16)
-	ef5 = np.zeros((nrows, ncols), dtype=np.int16)
-
-	# record values for each hurricane
-	for i in range(0, ii_rows):
-		# get hurricane id
-		hur_id = ii.hur_id[i]
-
-		# read regional hurricane file in Geotiff format
-		hur_tif_file = cwd + "/region/" + hur_id + ".tif"
-		check_file_exists(hur_tif_file)
-		hur_tif = rio.open(hur_tif_file)
-
-		# get enhanced Fujita scale layer
-		ff_array = hur_tif.read(2) # enhanced Fujita scale
-
-		# update peak Fujita value
-		efmax = np.amax(ff_array) - 2
-
-		hur_id_seq.append(hur_id)
-		efmax_seq.append(efmax)
-
-		# update enhanced Fujita scale
-		for j in range(0, nrows):
-			for k in range(0, ncols):
-				val = ff_array[j, k]
-
-				if val > 0 and efm[j, k] < val:
-					efm[j, k] = val
- 
-				if val == 2:
-					ef0[j, k] = ef0[j, k] + 1
-      
-				elif val == 3:
-					ef0[j, k] = ef0[j, k] + 1
-					ef1[j, k] = ef1[j, k] + 1
-      
-				elif val == 4:
-					ef0[j, k] = ef0[j, k] + 1
-					ef1[j, k] = ef1[j, k] + 1
-					ef2[j, k] = ef2[j, k] + 1
-
-				elif val == 5:
-					ef0[j, k] = ef0[j, k] + 1
-					ef1[j, k] = ef1[j, k] + 1
-					ef2[j, k] = ef2[j, k] + 1
-					ef3[j, k] = ef3[j, k] + 1
-        
-				elif val == 6:
-					ef0[j, k] = ef0[j, k] + 1
-					ef1[j, k] = ef1[j, k] + 1
-					ef2[j, k] = ef2[j, k] + 1
-					ef3[j, k] = ef3[j, k] + 1
-					ef4[j, k] = ef4[j, k] + 1          
-
-				elif val == 7:
-					ef0[j, k] = ef0[j, k] + 1
-					ef1[j, k] = ef1[j, k] + 1
-					ef2[j, k] = ef2[j, k] + 1
-					ef3[j, k] = ef3[j, k] + 1
-					ef4[j, k] = ef4[j, k] + 1          
-					ef5[j, k] = ef5[j, k] + 1          
-
-	# save to csv file
-	peak_cols = ['hur_id', 'efmax']
-	peak = pd.DataFrame(data=list(zip(hur_id_seq, efmax_seq)), columns=peak_cols)
-
-	peak_file = cwd + "/region/summary.csv"
-	peak.to_csv(peak_file, index=False)
-
-	# save to GeoTiff file
-	sum_tif_file = cwd + "/region/summary.tif"
-
-	profile = land_water.profile
-	profile.update(dtype='int16', nodata=-9999, count=7)
-
-	sum_tif = rio.open(sum_tif_file, 'w', **profile)
-
-	sum_tif.write(efm, 1)
-	sum_tif.write(ef0, 2)
-	sum_tif.write(ef1, 3)
-	sum_tif.write(ef2, 4)
-	sum_tif.write(ef3, 5)
-	sum_tif.write(ef4, 6)
-	sum_tif.write(ef5, 7)
-
-	sum_tif.close()
-
 
 ### PLOTTING FUNCTIONS ####################################
 
@@ -1922,11 +1924,11 @@ def hurrecon_summarize_region():
 #   site_name - name of site
 #   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
 #   end_datetime - optional end datetime in format YYYY-MM-DD hh:mm
-#   y_var - y-axis variable
-#   returns nothing
+#   var - variable to plot
+#   no return value
 
 def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='', 
-	y_var="wind_spd"):
+	var="wind_speed"):
 	
 	# get current working directory
 	cwd = os.getcwd()
@@ -1959,14 +1961,17 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 	x_var = "dt"
 	x_label = "Datetime (UTC)"
 
-	if y_var == "wind_spd":
+	if var == "wind_speed":
+		y_var = "wind_spd"
 		y_label = "Wind Speed (m/s)"
-	elif y_var == "gust_spd":
+	elif var == "gust_speed":
+		y_var = "gust_spd"
 		y_label = "Gust Speed (m/s)"
-	elif y_var == "wind_dir":
+	elif var == "wind_direction":
+		y_var = "wind_dir"
 		y_label = "Wind Direction (deg)"
 	else:
-		print("\ny_var must be wind_spd, gust_spd, or wind_dir\n")
+		print("\nvar must be wind_speed, gust_speed, or wind_direction\n")
 		sys.exit()
 
 	# subset by data range
@@ -2029,12 +2034,12 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 #   site_name - name of site
 #   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
 #   end_datetime - optional end datetime in format YYYY-MM-DD hh:mm
-#   y_var - y-axis variable
+#   var - variable to plot
 #   adjust - whether to subtract 360 degrees from wind direction.
-#   returns nothing
+#   no return value
 
 def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='', 
-	y_var="wind_spd", adjust=False):
+	var="wind_speed", adjust=False):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2067,12 +2072,14 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 	x_var = "wind_dir"
 	x_label = "Wind Direction (deg)"
 
-	if y_var == "wind_spd":
+	if var == "wind_speed":
+		y_var = "wind_spd"
 		y_label = "Wind Speed (m/s)"
-	elif y_var == "gust_spd":
+	elif var == "gust_speed":
+		y_var = "gust_spd"
 		y_label = "Gust Speed (m/s)"
 	else:
-		print("\ny_var must be wind_spd or gust_spd\n")
+		print("\nvar must be wind_speed or gust_speed\n")
 		sys.exit()
 
 	# adjust wind direction
@@ -2144,11 +2151,11 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 #   site_name - name of site
 #   start_year - optional start year
 #   end_year - optional end year
-#   y_var - y-axis variable
-#   returns nothing
+#   var - variable to plot
+#   no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
-	y_var="wind_spd"):
+	var="wind_speed"):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2167,14 +2174,17 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 	x_var = "year"
 	x_label = "Year"
 
-	if y_var == "wind_spd":
+	if var == "wind_speed":
+		y_var = "wind_spd"
 		y_label = "Wind Speed (m/s)"
-	elif y_var == "gust_spd":
+	elif var == "gust_speed":
+		y_var = "gust_spd"
 		y_label = "Gust Speed (m/s)"
-	elif y_var == "wind_dir":
+	elif var == "wind_direction":
+		y_var = "wind_dir"
 		y_label = "Wind Direction (deg)"
 	else:
-		print("\ny_var must be wind_spd, gust_spd, or wind_dir\n")
+		print("\nvar must be wind_speed, gust_speed, or wind_direction\n")
 		sys.exit()
 
 	# subset by year
@@ -2241,7 +2251,7 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 # duration, and hurricane wind duration for a given hurricane.
 #   hur_id - hurricane id
 #   var - variable to plot
-#   returns nothing
+#   no return value
 
 def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	# get current working directory
@@ -2281,52 +2291,91 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	rainbow.set_under('white') 	
 
 	# create plot
-	fig, ax = plt.subplots(figsize=(15, 15))
-	plt.axis([lon_min, lon_max, lat_min, lat_max])
-	plt.xlabel('Longitude (degrees)')
-	plt.ylabel('Latitude (degrees)')
-	patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
-	ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-	plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
-
 	if var == "fujita_scale":
-		plt.title(hur_id + ' Fujita Scale')
-		img = hur_tif.read(2)
-		plt.imshow(img, cmap=rainbow, vmin=0.9)
-		cbar = plt.colorbar(shrink=0.3)
-		cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
-		cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
-		show((hur_tif, 2), cmap=rainbow, vmin=0.9)
-		plt.clf()	
+		if np.amax(hur_tif.read(2)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.title(hur_id + ' Fujita Scale')
+			img = hur_tif.read(2)
+			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
+			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
+			show((hur_tif, 2), cmap=rainbow, vmin=0.9)
+			plt.clf()
+		else:
+			print("No Fujita values\n")
 
 	elif var == "wind_speed":
-		plt.title(hur_id + ' Wind Speed (m/s)')
-		img = hur_tif.read(1)		
-		plt.imshow(img, cmap=viridis, vmin=0.9)
-		plt.colorbar(shrink=0.3)
-		show((hur_tif, 1), cmap=viridis, vmin=0.9)
-		plt.clf()	
+		if np.amax(hur_tif.read(1)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.title(hur_id + ' Wind Speed (m/s)')
+			img = hur_tif.read(1)		
+			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.colorbar(shrink=0.3)
+			show((hur_tif, 1), cmap=viridis, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No wind speed\n")
 
 	elif var == "wind_direction":
-		plt.title(hur_id + ' Wind Direction (deg)')
-		img = hur_tif.read(3)		
-		plt.imshow(img, cmap=viridis, vmin=0.9)
-		plt.colorbar(shrink=0.3)
-		show((hur_tif, 3), cmap=viridis, vmin=0.9)
-		plt.clf()	
+		if np.amax(hur_tif.read(3)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.title(hur_id + ' Wind Direction (deg)')
+			img = hur_tif.read(3)		
+			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.colorbar(shrink=0.3)
+			show((hur_tif, 3), cmap=viridis, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No wind direction\n")
 
 	elif var == "wind_compass":
-		plt.title(hur_id + ' Wind Direction')
-		img = hur_tif.read(4)		
-		plt.imshow(img, cmap=rainbow, vmin=0.9)
-		cbar = plt.colorbar(shrink=0.3)
-		cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
-		cbar.set_ticklabels(['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
-		show((hur_tif, 4), cmap=rainbow, vmin=0.9)
-		plt.clf()	
+		if np.amax(hur_tif.read(4)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.title(hur_id + ' Wind Direction')
+			img = hur_tif.read(4)		
+			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
+			cbar.set_ticklabels(['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
+			show((hur_tif, 4), cmap=rainbow, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No wind compass\n")
 
 	elif var == "gale_duration":
 		if np.amax(hur_tif.read(5)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
 			plt.title(hur_id + ' Gale Winds (min)')
 			img = hur_tif.read(5)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2338,6 +2387,12 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	
 	elif var == "hurricane_duration":
 		if np.amax(hur_tif.read(6)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title(hur_id + ' Hurricane Winds (min)')
 			img = hur_tif.read(6)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2358,7 +2413,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 # value and number of storms for each enhanced Fujita value for all hurricanes.
 #   var - variable to plot
 #   tracks - whether to also plot hurricane tracks
-#   returns nothing
+#   no return value
 
 def hurrecon_plot_region_all(var="efmax", tracks=False):
 	# get current working directory
@@ -2403,15 +2458,14 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 		kk = pd.read_csv(summary_file)
 
 	# create plot
-	fig, ax = plt.subplots(figsize=(15, 15))
-	plt.axis([lon_min, lon_max, lat_min, lat_max])
-	plt.xlabel('Longitude (degrees)')
-	plt.ylabel('Latitude (degrees)')
-	patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
-	ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-
 	if var == "efmax":
 		if np.amax(sum_tif.read(1)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Maximum Fujita Scale')
 			img = sum_tif.read(1)		
 			plt.imshow(img, cmap=rainbow, vmin=0.9)
@@ -2432,6 +2486,12 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 
 	elif var == "ef0":
 		if np.amax(sum_tif.read(2)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 0 Storms')
 			img = sum_tif.read(2)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2450,6 +2510,12 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 
 	elif var == "ef1":
 		if np.amax(sum_tif.read(3)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 1 Storms')
 			img = sum_tif.read(3)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2468,6 +2534,12 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 
 	elif var == "ef2":
 		if np.amax(sum_tif.read(4)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 2 Storms')
 			img = sum_tif.read(4)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2486,6 +2558,12 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 
 	elif var == "ef3":
 		if np.amax(sum_tif.read(5)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 3 Storms')
 			img = sum_tif.read(5)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2504,6 +2582,12 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 	
 	elif var == "ef4":
 		if np.amax(sum_tif.read(6)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 4 Storms')
 			img = sum_tif.read(6)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2522,6 +2606,12 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 
 	elif var == "ef5":
 		if np.amax(sum_tif.read(7)) > 0:
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 5 Storms')
 			img = sum_tif.read(7)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
