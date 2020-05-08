@@ -24,23 +24,25 @@ UTC (GMT). The following measurement units are used throughout:
 latitude, longitude, bearing, direction - degrees
 distance - kilometers
 speed - meters/second
-time - minutes
+time - minutes or hours
 ```
 
 The user specifies a directory (hur_dir) for a given set of model runs. Input
 and output files are stored on the following subdirectories of this directory:
 
 ```{r}
-hur_dir/gis
 hur_dir/input
 hur_dir/region
+hur_dir/region-all
 hur_dir/site
+hur_dir/site-all
+hur_dir/vector
 ```
 
 The input subdirectory contains input files. The site and region subdirectories
 contain site and regional output files, respectively. Shapefiles that contain
 geographic and political boundaries for viewing regional results are stored on the 
-gis subdirectory.
+vector subdirectory.
 
 The following input files are required:
 
@@ -53,7 +55,7 @@ land-water.tif
 boundary.*
 ```
 
-All files (except boundary files) are located on the input subdirectory.
+All input files (except boundary files) are located on the input subdirectory.
 
 The sites file contains the name, location, and cover type (water = 1, land = 2)
 of each study site. Variables: site_name, latitude, longitude, cover_type.
@@ -83,7 +85,7 @@ window and spatial resolution for regional modeling.
 
 The boundary files are vector shapefiles that are used for creating maps of regional
 results. Files must be renamed so the first name of each file is "boundary".
-These files are located on the gis subdirectory.
+These files are located on the vector subdirectory.
 
 Examples of input files may be found on the inst/extdata subdirectory (R) or data
 subdirectory (Python).
@@ -128,7 +130,7 @@ hurrecon_plot_region_all
 
 The hurrecon_reformat_hurdat2 function reformats data from HURDAT2 
 for use with HURRECON. This is normally a one-time operation for a
-given ocean basin.
+given version of HURDAT2.
 
 The hurrecon_set_path function sets the current working directory to 
 the desired directory for the current set of model runs.
@@ -147,11 +149,11 @@ The hurrecon_model functions generate output for a single hurricane and a
 single site (site), all hurricanes for a single site (site_all), one hurricane
 for the current geographic region (region), or all hurricanes for the
 current geographic region (region_all). If save is TRUE (default), results
-are written to the site or region subdirectory as CSV or GeoTiff files,
-respectively. The default time step for site results is 1 minute. The default
-time step for regional results is calculated as the time required to traverse 
-one cell in the vertical direction at 20 meters per second, rounded to one 
-of these values: 1, 2, 3, 5, 10, 15, 30, or 60 minutes.
+are written to the site, site-all, region, or region-all subdirectory as CSV 
+or GeoTiff files, respectively. The default time step for site results is 1 minute.
+The default time step for regional results is calculated as the time required 
+to traverse one cell in the vertical direction at 20 meters per second, rounded 
+to one of these values: 1, 2, 3, 5, 10, 15, 30, or 60 minutes.
 
 The hurrecon_summarize_land_water function displays features of the current
 land-water file. The hurrecon_summarize_tracks function displays features of
@@ -170,7 +172,7 @@ for a single hurricane or for all hurricanes.
 Sample commands for the 1935 Florida Keys hurricane and Miami FL:
 
 ```{r}
-hurrecon_reformat_hurdat2(hurdat2_file="hurdat2-1851-2018-120319.txt")
+hurrecon_reformat_hurdat2(hurdat2_file="hurdat2-1851-2019-042820.txt")
 
 hurrecon_set_path("c:/hurrecon/r/east")
 

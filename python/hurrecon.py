@@ -1004,13 +1004,56 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 
 	return [ss, ff, dd, cc, gg, hh]
 
-# get_regional_summary compiles regional results for all hurricanes.
-# Results are saved in a GeoTiff file (summary.tif) with 7 layers and in
-# a CSV file of hurricane ids and maximum enhanced Fujita scale values
-# (summary.csv) on the region subdirectory.
-#   no return value
+# get_regional_summary_csv compiles regional results for all hurricanes.
+# Results are returned as a data frame of hurricane ids and maximum enhanced
+# Fujita scale values.
+#   returns a data frame of summary values
 
-def get_regional_summary():
+def get_regional_summary_csv():
+	# get current working directory
+	cwd = os.getcwd()
+
+	# read ids file
+	ids_file = cwd + "/input/ids.csv"
+	check_file_exists(ids_file)
+	ii = pd.read_csv(ids_file)
+	ii_rows = len(ii)
+
+	# create lists for peak Fujita value across region
+	hur_id_list = []
+	efmax_list = []
+
+	# record values for each hurricane
+	for i in range(0, ii_rows):
+		# get hurricane id
+		hur_id = ii.hur_id[i]
+
+		# read regional hurricane file in Geotiff format
+		hur_tif_file = cwd + "/region-all/" + hur_id + ".tif"
+		check_file_exists(hur_tif_file)
+		hur_tif = rio.open(hur_tif_file)
+
+		# get enhanced Fujita scale layer
+		ff_array = hur_tif.read(2) # enhanced Fujita scale
+
+		# update peak Fujita value
+		efmax = np.amax(ff_array) - 2
+
+		hur_id_list.append(hur_id)
+		efmax_list.append(efmax)
+
+	# create data frame
+	kk_cols = ['hur_id', 'efmax']
+	kk = pd.DataFrame(data=list(zip(hur_id_list, efmax_list)), columns=kk_cols)
+
+	return kk
+
+# get_regional_summary_tif compiles regional results for all hurricanes.
+# Results are returned as a list of 7 rasters representing the maximum
+# Fujita value and the number of storms for each Fujita value.
+#   returns as list of 7 rasters
+
+def get_regional_summary_tif():
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1029,10 +1072,6 @@ def get_regional_summary():
 	nrows = land_water.height
 	ncols = land_water.width
 
-	# create lists for peak Fujita value across region
-	hur_id_list = []
-	efmax_list = []
-
 	# create arrays for peak wind speed & direction
 	efm = np.zeros((nrows, ncols), dtype=np.int16)
 	ef0 = np.zeros((nrows, ncols), dtype=np.int16)
@@ -1048,18 +1087,12 @@ def get_regional_summary():
 		hur_id = ii.hur_id[i]
 
 		# read regional hurricane file in Geotiff format
-		hur_tif_file = cwd + "/region/" + hur_id + ".tif"
+		hur_tif_file = cwd + "/region-all/" + hur_id + ".tif"
 		check_file_exists(hur_tif_file)
 		hur_tif = rio.open(hur_tif_file)
 
 		# get enhanced Fujita scale layer
 		ff_array = hur_tif.read(2) # enhanced Fujita scale
-
-		# update peak Fujita value
-		efmax = np.amax(ff_array) - 2
-
-		hur_id_list.append(hur_id)
-		efmax_list.append(efmax)
 
 		# update enhanced Fujita scale
 		for j in range(0, nrows):
@@ -1102,30 +1135,7 @@ def get_regional_summary():
 					ef4[j, k] = ef4[j, k] + 1          
 					ef5[j, k] = ef5[j, k] + 1          
 
-	# save to csv file
-	peak_cols = ['hur_id', 'efmax']
-	peak = pd.DataFrame(data=list(zip(hur_id_list, efmax_list)), columns=peak_cols)
-
-	peak_file = cwd + "/region/summary.csv"
-	peak.to_csv(peak_file, index=False)
-
-	# save to GeoTiff file
-	sum_tif_file = cwd + "/region/summary.tif"
-
-	profile = land_water.profile
-	profile.update(dtype='int16', nodata=-9999, count=7)
-
-	sum_tif = rio.open(sum_tif_file, 'w', **profile)
-
-	sum_tif.write(efm, 1)
-	sum_tif.write(ef0, 2)
-	sum_tif.write(ef1, 3)
-	sum_tif.write(ef2, 4)
-	sum_tif.write(ef3, 5)
-	sum_tif.write(ef4, 6)
-	sum_tif.write(ef5, 7)
-
-	sum_tif.close()
+	return[efm, ef0, ef1, ef2, ef3, ef4, ef5]
 
 # get_track_lat_lon returns a data frame of track data for the specified hurricane
 # if the maximum enhanced Fujita value exceeds a specified value.
@@ -1172,7 +1182,7 @@ def hurrecon_set_path(hur_path):
 # hurrecon_create_land_water creates a land-water raster file in GeoTiff 
 # format from vector boundary files in shapefile format. The land-water file
 # (land_water.tif) is assumed to be aligned with lines of latitude and 
-# longitude.  Boundary files are assumed to be named boundary.* on the gis 
+# longitude.  Boundary files are assumed to be named boundary.* on the vector 
 # subdirectory. The land-water file is created on the input subdirectory.
 #   nrows - number of rows
 #   ncols - number of columns
@@ -1187,7 +1197,7 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx):
 	cwd = os.getcwd()
 
 	# open boundaries file
-	boundaries_file = cwd + "/gis/boundaries.shp"
+	boundaries_file = cwd + "/vector/boundaries.shp"
 	shapefile = fiona.open(boundaries_file, "r")
 	shapes = [feature["geometry"] for feature in shapefile]
 	shapefile.close()
@@ -1592,7 +1602,7 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 # hurrecon_model_site_all creates a table of peak values for all hurricanes
 # for a given site. If width is True, the radius of maximum wind (rmw) and 
 # profile exponent (s_par) for the given hurricane are used, if available. 
-# If save is True, results are saved to a CSV file on the site subdirectory; 
+# If save is True, results are saved to a CSV file on the site-all subdirectory; 
 # otherwise results are returned as a data frame. If timing is True, the 
 # total elasped time is displayed.
 #   site_name - name of site
@@ -1681,7 +1691,7 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	# output
 	if (save == True):
 		# save modeled data to CSV file
-		site_peak_file = cwd + "/site/" + site_name + " Peak Values.csv"
+		site_peak_file = cwd + "/site-all/" + site_name + " Peak Values.csv"
 		peak_values.to_csv(site_peak_file, index=False)
 		print("Saving to", site_peak_file)
 	else:
@@ -1728,7 +1738,7 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 	modeled = interpolate_hurricane_speed_bearing(track, modeled)
 
 	# get modeled values over region
-	peak = get_regional_peak_wind(hur_id, modeled, width, time_step, water, timing)
+	peak_list = get_regional_peak_wind(hur_id, modeled, width, time_step, water, timing)
 
 	# output
 	if (save == True):
@@ -1745,18 +1755,18 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
         
 		hur_tif = rio.open(hur_tif_file, 'w', **profile)
 
-		hur_tif.write(peak[0], 1)
-		hur_tif.write(peak[1], 2)
-		hur_tif.write(peak[2], 3)
-		hur_tif.write(peak[3], 4)
-		hur_tif.write(peak[4], 5)
-		hur_tif.write(peak[5], 6)
+		hur_tif.write(peak_list[0], 1)
+		hur_tif.write(peak_list[1], 2)
+		hur_tif.write(peak_list[2], 3)
+		hur_tif.write(peak_list[3], 4)
+		hur_tif.write(peak_list[4], 5)
+		hur_tif.write(peak_list[5], 6)
 
 		hur_tif.close()
 
 	else:
 		# return modeled values as a list of 6 arrays
-		return peak
+		return peak_list
 
 # hurrecon_model_region_all calculates peak wind speed (meters/second), 
 # enhanced Fujita scale, wind direction (degrees), cardinal wind direction, 
@@ -1765,9 +1775,9 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 # wind (rmw) and profile exponent (s_par) for the given hurricane are used, 
 # if available. If no value is provided for time step, the time step is 
 # calculated. If water is False, results are calculated for land areas only.
-# Results for each hurricane are saved in a GeoTiff file on the region 
+# Results for each hurricane are saved in a GeoTiff file on the region-all 
 # subdirectory. Summary results for all hurricanes (summary.tif, summary.csv)
-# are also calculated and saved to the region subdirectory.
+# are also calculated and saved to the region-all subdirectory.
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate results over water
@@ -1789,6 +1799,14 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 	ii = pd.read_csv(ids_file)
 	ii_rows = len(ii)
 
+	# read land-water file
+	land_water_file = cwd + "/input/land_water.tif"
+	check_file_exists(land_water_file)
+	land_water = rio.open(land_water_file)
+
+	profile = land_water.profile
+	profile.update(dtype='int16', nodata=-9999, count=7)
+
 	# record total elasped time
 	start_time = time.time()
 
@@ -1803,10 +1821,41 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 		print("\r", x, "%", end="")
 
 		# generate & save regional results
-		hurrecon_model_region(hur_id, width, time_step, water, save=True, timing=False)
+		peak_list = hurrecon_model_region(hur_id, width, time_step, water, 
+			save=False, timing=False)
 
-	# generate & save regional summary files
-	get_regional_summary()
+		# open GeoTiff file
+		hur_tif_file = cwd + "/region-all/" + hur_id + ".tif"
+		hur_tif = rio.open(hur_tif_file, 'w', **profile)
+
+		hur_tif.write(peak_list[0], 1)
+		hur_tif.write(peak_list[1], 2)
+		hur_tif.write(peak_list[2], 3)
+		hur_tif.write(peak_list[3], 4)
+		hur_tif.write(peak_list[4], 5)
+		hur_tif.write(peak_list[5], 6)
+
+		hur_tif.close()
+
+	# get & save summary.csv file
+	kk = get_regional_summary_csv()
+	peak_file = cwd + "/region-all/summary.csv"
+	kk.to_csv(peak_file, index=False)
+
+	# get & save summary.tif file
+	sum_list = get_regional_summary_tif()
+	sum_tif_file = cwd + "/region-all/summary.tif"
+	sum_tif = rio.open(sum_tif_file, 'w', **profile)
+
+	sum_tif.write(sum_list[0], 1)
+	sum_tif.write(sum_list[1], 2)
+	sum_tif.write(sum_list[2], 3)
+	sum_tif.write(sum_list[3], 4)
+	sum_tif.write(sum_list[4], 5)
+	sum_tif.write(sum_list[5], 6)
+	sum_tif.write(sum_list[6], 7)
+
+	sum_tif.close()
 
 	# display total elapsed time
 	elapsed_time = format_time_difference_hms(start_time, time.time())
@@ -2170,7 +2219,7 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 	ef_col = get_fujita_colors()
 
 	# read data
-	peak_file = cwd + "/site/" + site_name + " Peak Values.csv"
+	peak_file = cwd + "/site-all/" + site_name + " Peak Values.csv"
 	check_file_exists(peak_file)
 	kk = pd.read_csv(peak_file)
 	kk_rows = len(kk)
@@ -2275,7 +2324,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	lon_max = hur_tif.bounds.right
 
 	# read boundaries file
-	boundaries_file = cwd + "/gis/boundaries.shp"
+	boundaries_file = cwd + "/vector/boundaries.shp"
 	shapefile = fiona.open(boundaries_file, "r")
 	features = [feature["geometry"] for feature in shapefile]
 	shapefile.close()
@@ -2427,7 +2476,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 	cwd = os.getcwd()
 
 	# read GeoTiff file
-	sum_tif_file = cwd + "/region/" + "summary.tif"
+	sum_tif_file = cwd + "/region-all/" + "summary.tif"
 	check_file_exists(sum_tif_file)
 	sum_tif = rio.open(sum_tif_file)
 
@@ -2438,7 +2487,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 	lon_max = sum_tif.bounds.right
 
 	# read boundaries file
-	boundaries_file = cwd + "/gis/boundaries.shp"
+	boundaries_file = cwd + "/vector/boundaries.shp"
 	shapefile = fiona.open(boundaries_file, "r")
 	features = [feature["geometry"] for feature in shapefile]
 	shapefile.close()
@@ -2460,7 +2509,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 		check_file_exists(track_file)
 		tt = pd.read_csv(track_file)
 
-		summary_file = cwd + "/region/summary.csv"
+		summary_file = cwd + "/region-all/summary.csv"
 		check_file_exists(summary_file)
 		kk = pd.read_csv(summary_file)
 
