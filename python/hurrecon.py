@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# March 2020
+# May 2020
 
 # Python version 3.7.4.
 
@@ -33,12 +33,12 @@ import os
 import sys
 import math
 import time
+import fiona
 import numpy as np
 import pandas as pd
 import datetime as dt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import fiona
 import rasterio as rio
 from rasterio.plot import show
 from rasterio.mask import mask
@@ -198,47 +198,46 @@ def get_fixed_model_parameters(cover_type):
 	return [asymmetry_factor, inflow_angle, friction_factor, gust_factor]
 
 # get_time_step calculates the time step (minutes) for regional modeling, 
-# assuming a maximum hurricane speed of 20 meters per second (1200 meters 
-# per minute). Values are rounded to the nearest 1, 2, 3, 5, 10, 15, 30, 
-# or 60 minutes.
+# assuming a maximum hurricane forward speed of 20 meters per second (1200 
+# meters per minute). Values are rounded to the nearest 1, 2, 3, 5, 10, 15, 
+# 30, or 60 minutes.
 #   returns a time step
 
-def get_time_step(time_step):
-	if time_step == "":
-		# read land-water file
-		cwd = os.getcwd()
-		land_water_file = cwd + "/input/land_water.tif"
-		check_file_exists(land_water_file)
-		land_water = rio.open(land_water_file)
+def get_time_step():
+	# read land-water file
+	cwd = os.getcwd()
+	land_water_file = cwd + "/input/land_water.tif"
+	check_file_exists(land_water_file)
+	land_water = rio.open(land_water_file)
 
-		# get cell height in meters
-		nrows = land_water.height
-		lat_min = land_water.bounds.bottom
-		lat_max = land_water.bounds.top
-		cell_y = 111132 * (lat_max - lat_min)/nrows
+	# get cell height in meters (at latitude 45 degrees)
+	nrows = land_water.height
+	lat_min = land_water.bounds.bottom
+	lat_max = land_water.bounds.top
+	cell_y = 111132 * (lat_max - lat_min)/nrows
 
-		# close land-water file
-		land_water.close()
+	# close land-water file
+	land_water.close()
 
-		# calculate time step
-		ts = round(cell_y/1200)
+	# calculate time step
+	ts = round(cell_y/1200)
 
-		if ts <= 1:
-			time_step = 1
-		elif ts <= 2:
-			time_step = 2
-		elif ts <= 4:
-			time_step = 3
-		elif ts <= 7:
-			time_step = 5
-		elif ts <= 12:
-			time_step = 10
-		elif ts <= 22:
-			time_step = 15
-		elif ts <= 45:
-			time_step = 30
-		else:
-			time_step = 60
+	if ts <= 1:
+		time_step = 1
+	elif ts <= 2:
+		time_step = 2
+	elif ts <= 4:
+		time_step = 3
+	elif ts <= 7:
+		time_step = 5
+	elif ts <= 12:
+		time_step = 10
+	elif ts <= 22:
+		time_step = 15
+	elif ts <= 45:
+		time_step = 30
+	else:
+		time_step = 60
 
 	return time_step
 
@@ -395,19 +394,19 @@ def read_hurricane_track_file(hur_id):
 		sys.exit()
 
 	# create data frame
-	hur_id_seq = list(xx.hur_id)
-	name_seq = list(xx.name)
-	date_time_seq = list(xx.date_time)
-	jd_seq = list(xx.jd)
-	status_seq = list(xx.status)
-	latitude_seq = list (xx.latitude)
-	longitude_seq = list(xx.longitude)
-	wind_max_seq = list(xx.wind_max)
+	hur_id_list = list(xx.hur_id)
+	name_list = list(xx.name)
+	date_time_list = list(xx.date_time)
+	jd_list = list(xx.jd)
+	status_list = list(xx.status)
+	latitude_list = list (xx.latitude)
+	longitude_list = list(xx.longitude)
+	wind_max_list = list(xx.wind_max)
 
 	tt_cols = ['hur_id', 'name', 'date_time', 'jd', 'status', 'latitude', 'longitude', 'wind_max']
 
-	tt = pd.DataFrame(data=list(zip(hur_id_seq, name_seq, date_time_seq, jd_seq, status_seq,
-		latitude_seq, longitude_seq, wind_max_seq)), columns=tt_cols)
+	tt = pd.DataFrame(data=list(zip(hur_id_list, name_list, date_time_list, jd_list, status_list,
+		latitude_list, longitude_list, wind_max_list)), columns=tt_cols)
 
 	return tt 
 
@@ -423,12 +422,12 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 	tt_rows = len(tt)
 
 	# initialize lists
-	jd_seq = []
-	dt_seq = []
-	yr_seq = []
-	lat_seq = []
-	lon_seq = []
-	wmax_seq = []
+	jd_list = []
+	dt_list = []
+	yr_list = []
+	lat_list = []
+	lon_list = []
+	wmax_list = []
 
 	# interpolate values for each segment of track
 	for i in range(0, tt_rows-1):
@@ -448,25 +447,25 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 		dt = [''] * (new_rows - 1)
 		yr = [int(tt.date_time[0][0:4])] * (new_rows - 1)
 
-		jd_seq.extend(jd)
-		dt_seq.extend(dt)
-		yr_seq.extend(yr)
-		lat_seq.extend(lat)
-		lon_seq.extend(lon)
-		wmax_seq.extend(wmax)
+		jd_list.extend(jd)
+		dt_list.extend(dt)
+		yr_list.extend(yr)
+		lat_list.extend(lat)
+		lon_list.extend(lon)
+		wmax_list.extend(wmax)
 
 	# add final row
-	jd_seq.append(tt.jd[tt_rows-1])
-	dt_seq.append('')
-	yr_seq.append(int(tt.date_time[tt_rows-1][0:4]))
-	lat_seq.append(tt.latitude[tt_rows-1])
-	lon_seq.append(tt.longitude[tt_rows-1])
-	wmax_seq.append(tt.wind_max[tt_rows-1])
+	jd_list.append(tt.jd[tt_rows-1])
+	dt_list.append('')
+	yr_list.append(int(tt.date_time[tt_rows-1][0:4]))
+	lat_list.append(tt.latitude[tt_rows-1])
+	lon_list.append(tt.longitude[tt_rows-1])
+	wmax_list.append(tt.wind_max[tt_rows-1])
 
 	# create data frame for modeled data
 	mm_cols = ['date_time', 'year', 'jd', 'latitude', 'longitude', 'wind_max']
 	
-	mm = pd.DataFrame(data=list(zip(dt_seq, yr_seq, jd_seq, lat_seq, lon_seq, wmax_seq)), 
+	mm = pd.DataFrame(data=list(zip(dt_list, yr_list, jd_list, lat_list, lon_list, wmax_list)), 
 		columns=mm_cols)
 
 	return mm
@@ -481,7 +480,7 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 #   returns a list containing range & bearing
 
 def calculate_range_bearing(lat1, lon1, lat2, lon2):
-	R = 6371 # radius of earth in kilometers
+	R = 6367 # radius of earth in kilometers (at latitude 45 degrees)
 
 	d2r = 0.017453292519943295  # pi / 180
 	r2d = 57.29577951308232  # 180 / pi
@@ -547,9 +546,9 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 	tt_rows = len(tt)
 
 	# intialize lists
-	jd_seq = []
-	spd_seq = []
-	bear_seq = []
+	jd_list = []
+	spd_list = []
+	bear_list = []
 
 	# calculate mid-segment hurricane speed & bearing
 	for i in range(0, tt_rows-1):
@@ -558,19 +557,19 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 
 		interval_sec = (tt.jd[i+1] - tt.jd[i]) * 1440 * 60
 
-		jd_seq.append(tt.jd[i] + (tt.jd[i+1] - tt.jd[i])/2)
-		spd_seq.append(1000*hur_range_bear[0]/interval_sec)
-		bear_seq.append(hur_range_bear[1])
+		jd_list.append(tt.jd[i] + (tt.jd[i+1] - tt.jd[i])/2)
+		spd_list.append(1000*hur_range_bear[0]/interval_sec)
+		bear_list.append(hur_range_bear[1])
 
 	# create data frame for mid-segment values
 	vv_cols = ['jd', 'hur_bear', 'hur_spd']
-	vv = pd.DataFrame(data=list(zip(jd_seq, bear_seq, spd_seq)), columns=vv_cols)
+	vv = pd.DataFrame(data=list(zip(jd_list, bear_list, spd_list)), columns=vv_cols)
 
 	vv_rows = len(vv)
 
 	# intialize lists
-	bear_seq = []
-	spd_seq = []
+	bear_list = []
+	spd_list = []
 
  	# interpolate hurricane speed & bearing for each segment
 	for i in range(0, vv_rows+1):
@@ -582,8 +581,8 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 			bear = [vv.hur_bear[0]] * new_rows
 			spd = [vv.hur_spd[0]] * new_rows
 
-			bear_seq.extend(bear)
-			spd_seq.extend(spd)
+			bear_list.extend(bear)
+			spd_list.extend(spd)
 
 		# interpolate between mid-points
 		elif i <= vv_rows-1:
@@ -604,8 +603,8 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 			# speed
 			spd = np.linspace(start=vv.hur_spd[i-1], stop=vv.hur_spd[i], num=new_rows).tolist()
 
-			bear_seq.extend(bear)
-			spd_seq.extend(spd)
+			bear_list.extend(bear)
+			spd_list.extend(spd)
 
 		# after mid-point of last segment
 		else:
@@ -615,20 +614,20 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 			bear = [vv.hur_bear[vv_rows-1]] * new_rows
 			spd = [vv.hur_spd[vv_rows-1]] * new_rows
 
-			bear_seq.extend(bear)
-			spd_seq.extend(spd)
+			bear_list.extend(bear)
+			spd_list.extend(spd)
 			
 	# adjust bearing as needed
-	for i in range(0, len(bear_seq)):
-		if bear_seq[i] < 0:
-			bear_seq[i] = bear_seq[i] + 360
+	for i in range(0, len(bear_list)):
+		if bear_list[i] < 0:
+			bear_list[i] = bear_list[i] + 360
 
-		if bear_seq[i] > 360:
-			bear_seq[i] = bear_seq[i] - 360
+		if bear_list[i] > 360:
+			bear_list[i] = bear_list[i] - 360
 
 	# add to modeled data frame
-	mm['hur_bear'] = bear_seq
-	mm['hur_spd'] = spd_seq
+	mm['hur_bear'] = bear_list
+	mm['hur_spd'] = spd_list
 
 	return mm
 
@@ -904,7 +903,6 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 	land_water_array = land_water.read(1)
 	land_water.close()
 
-
 	# read parameters file
 	pars = read_parameter_file(hur_id, width)
 	rmw = pars[0]
@@ -1032,8 +1030,8 @@ def get_regional_summary():
 	ncols = land_water.width
 
 	# create lists for peak Fujita value across region
-	hur_id_seq = []
-	efmax_seq = []
+	hur_id_list = []
+	efmax_list = []
 
 	# create arrays for peak wind speed & direction
 	efm = np.zeros((nrows, ncols), dtype=np.int16)
@@ -1060,8 +1058,8 @@ def get_regional_summary():
 		# update peak Fujita value
 		efmax = np.amax(ff_array) - 2
 
-		hur_id_seq.append(hur_id)
-		efmax_seq.append(efmax)
+		hur_id_list.append(hur_id)
+		efmax_list.append(efmax)
 
 		# update enhanced Fujita scale
 		for j in range(0, nrows):
@@ -1106,7 +1104,7 @@ def get_regional_summary():
 
 	# save to csv file
 	peak_cols = ['hur_id', 'efmax']
-	peak = pd.DataFrame(data=list(zip(hur_id_seq, efmax_seq)), columns=peak_cols)
+	peak = pd.DataFrame(data=list(zip(hur_id_list, efmax_list)), columns=peak_cols)
 
 	peak_file = cwd + "/region/summary.csv"
 	peak.to_csv(peak_file, index=False)
@@ -1276,19 +1274,19 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 	file_in.close()
 
 	# initialize lists
-	ids_hur_id_seq = []
-	ids_name_seq = []
-	ids_positions_seq = []
-	ids_wind_peak_seq = []
+	ids_hur_id_list = []
+	ids_name_list = []
+	ids_positions_list = []
+	ids_wind_peak_list = []
 
-	tracks_hur_id_seq = []
-	tracks_name_seq = []
-	tracks_date_time_seq = []
-	tracks_jd_seq = []
-	tracks_status_seq = []
-	tracks_latitude_seq = []
-	tracks_longitude_seq = []
-	tracks_wind_max_seq = []
+	tracks_hur_id_list = []
+	tracks_name_list = []
+	tracks_date_time_list = []
+	tracks_jd_list = []
+	tracks_status_list = []
+	tracks_latitude_list = []
+	tracks_longitude_list = []
+	tracks_wind_max_list = []
 
 	# current line number in hurdat
 	line_num = -1
@@ -1341,20 +1339,20 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 			jd = float(calculate_julian_day(int(year), int(month), int(day), hour, minute))
 
 			# store values in tracks lists
-			tracks_hur_id_seq.append(hur_id)
-			tracks_name_seq.append(name)
-			tracks_date_time_seq.append(date_time)
-			tracks_jd_seq.append(jd)
-			tracks_status_seq.append(status)
-			tracks_latitude_seq.append(latitude)
-			tracks_longitude_seq.append(longitude)
-			tracks_wind_max_seq.append(wind_max)
+			tracks_hur_id_list.append(hur_id)
+			tracks_name_list.append(name)
+			tracks_date_time_list.append(date_time)
+			tracks_jd_list.append(jd)
+			tracks_status_list.append(status)
+			tracks_latitude_list.append(latitude)
+			tracks_longitude_list.append(longitude)
+			tracks_wind_max_list.append(wind_max)
 	
 		# store values in ids lists
-		ids_hur_id_seq.append(hur_id)
-		ids_name_seq.append(name)
-		ids_positions_seq.append(positions)
-		ids_wind_peak_seq.append(wind_peak)
+		ids_hur_id_list.append(hur_id)
+		ids_name_list.append(name)
+		ids_positions_list.append(positions)
+		ids_wind_peak_list.append(wind_peak)
 
 		# report progress
 		x = round(line_num*100/nlines)
@@ -1364,13 +1362,13 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 
 	# create data frames
 	ids_cols = ['hur_id', 'name', 'positions', 'wind_peak']
-	ids = pd.DataFrame(data=list(zip(ids_hur_id_seq, ids_name_seq, ids_positions_seq, ids_wind_peak_seq)), 
+	ids = pd.DataFrame(data=list(zip(ids_hur_id_list, ids_name_list, ids_positions_list, ids_wind_peak_list)), 
 		columns=ids_cols)
 
 	tracks_cols = ['hur_id', 'name', 'date_time', 'jd', 'status', 'latitude', 'longitude', 'wind_max']
 
-	tracks= pd.DataFrame(data=list(zip(tracks_hur_id_seq, tracks_name_seq, tracks_date_time_seq, 
-		tracks_jd_seq, tracks_status_seq, tracks_latitude_seq, tracks_longitude_seq, tracks_wind_max_seq)), 
+	tracks= pd.DataFrame(data=list(zip(tracks_hur_id_list, tracks_name_list, tracks_date_time_list, 
+		tracks_jd_list, tracks_status_list, tracks_latitude_list, tracks_longitude_list, tracks_wind_max_list)), 
 		columns=tracks_cols)
 
 	# save to file
@@ -1383,10 +1381,14 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 
 # hurrecon_extract_tracks extracts hurricane ids and tracks from the two
 # files created by hurrecon_reformat_hurdat2 (hurdat2_ids.csv and 
-# hurdat2_tracks.csv). Selected hurricanes must have at least two positions
-# in the geographic window set by the land-water file (and optionally extended
-# by the margin parameter) and must have a maximum sustained wind speed
-# in that window that equals or exceeds the value of wind_min.
+# hurdat2_tracks.csv). The geographic window used to select hurricanes is 
+# set by the land-water file and optionally extended by the margin parameter.
+# Selection begins by identifying all positions in the window where the hurricane
+# has "HU" (hurricane) status in HURDAT2.  If at least one such position exists,
+# the track is extended to include one position before and one position after
+# the window, if possible. If the resulting track contains at least two positions
+# and the maximum sustained wind speed equals or exceeds wind_min, the track 
+# is included.
 #   margin - optional extension of the geographic window set by the
 #     land-water file (degrees)
 #   wind_min - minimum value of maximum sustained wind speed 
@@ -1426,19 +1428,19 @@ def hurrecon_extract_tracks(margin=0, wind_min=33):
 	land_water.close()
 
 	# initialize lists
-	ids_hur_id_seq = []
-	ids_name_seq = []
-	ids_positions_seq = []
-	ids_wind_peak_seq = []
+	ids_hur_id_list = []
+	ids_name_list = []
+	ids_positions_list = []
+	ids_wind_peak_list = []
 
-	tracks_hur_id_seq = []
-	tracks_name_seq = []
-	tracks_date_time_seq = []
-	tracks_jd_seq = []
-	tracks_status_seq = []
-	tracks_latitude_seq = []
-	tracks_longitude_seq = []
-	tracks_wind_max_seq = []
+	tracks_hur_id_list = []
+	tracks_name_list = []
+	tracks_date_time_list = []
+	tracks_jd_list = []
+	tracks_status_list = []
+	tracks_latitude_list = []
+	tracks_longitude_list = []
+	tracks_wind_max_list = []
 
 	# process files
 	for i in range(0, ii_rows):
@@ -1469,19 +1471,19 @@ def hurrecon_extract_tracks(margin=0, wind_min=33):
 		
 			# store id & tracks if at least 2 positions & exceeds minimum wind speed
 			if positions > 1 and wind_peak >= wind_min:
-				ids_hur_id_seq.append(hur_id)
-				ids_name_seq.append(name)
-				ids_positions_seq.append(positions)
-				ids_wind_peak_seq.append(wind_peak)
+				ids_hur_id_list.append(hur_id)
+				ids_name_list.append(name)
+				ids_positions_list.append(positions)
+				ids_wind_peak_list.append(wind_peak)
 
-				tracks_hur_id_seq.extend(xx.hur_id)
-				tracks_name_seq.extend(xx.name)
-				tracks_date_time_seq.extend(xx.date_time)
-				tracks_jd_seq.extend(xx.jd)
-				tracks_status_seq.extend(xx.status)
-				tracks_latitude_seq.extend(xx.latitude)
-				tracks_longitude_seq.extend(xx.longitude)
-				tracks_wind_max_seq.extend(xx.wind_max)
+				tracks_hur_id_list.extend(xx.hur_id)
+				tracks_name_list.extend(xx.name)
+				tracks_date_time_list.extend(xx.date_time)
+				tracks_jd_list.extend(xx.jd)
+				tracks_status_list.extend(xx.status)
+				tracks_latitude_list.extend(xx.latitude)
+				tracks_longitude_list.extend(xx.longitude)
+				tracks_wind_max_list.extend(xx.wind_max)
 
 		# report progress
 		x = round(i*100/ii_rows)
@@ -1491,13 +1493,13 @@ def hurrecon_extract_tracks(margin=0, wind_min=33):
 
 	# create data frames
 	ids_cols = ['hur_id', 'name', 'positions', 'wind_peak']
-	ids = pd.DataFrame(data=list(zip(ids_hur_id_seq, ids_name_seq, ids_positions_seq, ids_wind_peak_seq)),
+	ids = pd.DataFrame(data=list(zip(ids_hur_id_list, ids_name_list, ids_positions_list, ids_wind_peak_list)),
 		columns=ids_cols)
 
 	tracks_cols = ['hur_id', 'name', 'date_time', 'jd', 'status', 'latitude', 'longitude', 'wind_max']
 
-	tracks = pd.DataFrame(data=list(zip(tracks_hur_id_seq, tracks_name_seq, tracks_date_time_seq, 
-		tracks_jd_seq, tracks_status_seq, tracks_latitude_seq, tracks_longitude_seq, tracks_wind_max_seq)), 
+	tracks = pd.DataFrame(data=list(zip(tracks_hur_id_list, tracks_name_list, tracks_date_time_list, 
+		tracks_jd_list, tracks_status_list, tracks_latitude_list, tracks_longitude_list, tracks_wind_max_list)), 
 		columns=tracks_cols)
 
 	# save to file
@@ -1591,7 +1593,7 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 # for a given site. If width is True, the radius of maximum wind (rmw) and 
 # profile exponent (s_par) for the given hurricane are used, if available. 
 # If save is True, results are saved to a CSV file on the site subdirectory; 
-# otherwise results are returned as a data frame.  If timing is True, the 
+# otherwise results are returned as a data frame. If timing is True, the 
 # total elasped time is displayed.
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
@@ -1613,19 +1615,19 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	ii_rows = len(ii)
 
 	# initialize lists
-	snam_seq = []
-	hnam_seq = []
-	dt_seq = []
-	wdir_seq = []
-	wspd_seq = []
-	gust_seq = []
-	ef_seq = []
-	ef0_seq = []
-	ef1_seq = []
-	ef2_seq = []
-	ef3_seq = []
-	ef4_seq = []
-	ef5_seq = []
+	snam_list = []
+	hnam_list = []
+	dt_list = []
+	wdir_list = []
+	wspd_list = []
+	gust_list = []
+	ef_list = []
+	ef0_list = []
+	ef1_list = []
+	ef2_list = []
+	ef3_list = []
+	ef4_list = []
+	ef5_list = []
 
 	# record total elasped time if timing is True
 	if timing == True:
@@ -1643,19 +1645,19 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 		# get peak values
 		pk = get_peak_values(hur_id, site_name, mm)
 		
-		snam_seq.append(pk.site_name[0])
-		hnam_seq.append(pk.hur_id[0])
-		dt_seq.append(pk.date_time[0])
-		wdir_seq.append(pk.wind_dir[0])
-		wspd_seq.append(pk.wind_spd[0])
-		gust_seq.append(pk.gust_spd[0])
-		ef_seq.append(pk.ef_sca[0])
-		ef0_seq.append(pk.ef0[0])
-		ef1_seq.append(pk.ef1[0])
-		ef2_seq.append(pk.ef2[0])
-		ef3_seq.append(pk.ef3[0])
-		ef4_seq.append(pk.ef4[0])
-		ef5_seq.append(pk.ef5[0])
+		snam_list.append(pk.site_name[0])
+		hnam_list.append(pk.hur_id[0])
+		dt_list.append(pk.date_time[0])
+		wdir_list.append(pk.wind_dir[0])
+		wspd_list.append(pk.wind_spd[0])
+		gust_list.append(pk.gust_spd[0])
+		ef_list.append(pk.ef_sca[0])
+		ef0_list.append(pk.ef0[0])
+		ef1_list.append(pk.ef1[0])
+		ef2_list.append(pk.ef2[0])
+		ef3_list.append(pk.ef3[0])
+		ef4_list.append(pk.ef4[0])
+		ef5_list.append(pk.ef5[0])
 
 		# report progress
 		if timing == True:
@@ -1672,8 +1674,8 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	peak_values_cols = ['site_name', 'hur_id', 'date_time', 'wind_dir', 'wind_spd',
 		'gust_spd', "ef_sca", "ef0", "ef1", "ef2", "ef3", "ef4", "ef5"]
 
-	peak_values = pd.DataFrame(data=list(zip(snam_seq, hnam_seq, dt_seq, wdir_seq, wspd_seq, 
-		gust_seq, ef_seq, ef0_seq, ef1_seq, ef2_seq, ef3_seq, ef4_seq, ef5_seq)), 
+	peak_values = pd.DataFrame(data=list(zip(snam_list, hnam_list, dt_list, wdir_list, wspd_list, 
+		gust_list, ef_list, ef0_list, ef1_list, ef2_list, ef3_list, ef4_list, ef5_list)), 
 		columns=peak_values_cols)
 
 	# output
@@ -1710,7 +1712,8 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 	cwd = os.getcwd()
 
 	# get time step if necessary
-	time_step = get_time_step(time_step)
+	if time_step == "":
+		time_step = get_time_step()
 
 	if timing:
 		print("Time step =", time_step, "minutes")
@@ -1775,7 +1778,9 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 	cwd = os.getcwd()
 
 	# get time step if necessary
-	time_step = get_time_step(time_step)
+	if time_step == "":
+		time_step = get_time_step()
+	
 	print("Time step =", time_step, "minutes")
 
 	# read ids file
@@ -1841,7 +1846,7 @@ def hurrecon_summarize_land_water():
 
 	# get default time step
 
-	time_step = get_time_step(time_step="")
+	time_step = get_time_step()
 
 	print("Rows:", nrows, "  Columns:", ncols)
 	print("Latitude:", ymn, "to", ymx, "degrees")
@@ -1924,7 +1929,7 @@ def hurrecon_summarize_site(hur_id, site_name):
 #   site_name - name of site
 #   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
 #   end_datetime - optional end datetime in format YYYY-MM-DD hh:mm
-#   var - variable to plot
+#   var - variable to plot (wind_speed, gust_speed, or wind_direction)
 #   no return value
 
 def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='', 
@@ -1944,7 +1949,7 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 	mm_rows = len(mm)
 
 	# add datetime
-	dt_seq = []
+	dt_list = []
 
 	for i in range(0, mm_rows):
 		year = int(mm.date_time[i][0:4])
@@ -1953,9 +1958,9 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 		hour = int(mm.date_time[i][11:13])
 		minute = int(mm.date_time[i][14:16])
 
-		dt_seq.append(dt.datetime(year, month, day, hour, minute))
+		dt_list.append(dt.datetime(year, month, day, hour, minute))
 
-	mm['dt'] = dt_seq
+	mm['dt'] = dt_list
 
 	# get axis labels
 	x_var = "dt"
@@ -2034,7 +2039,7 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 #   site_name - name of site
 #   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
 #   end_datetime - optional end datetime in format YYYY-MM-DD hh:mm
-#   var - variable to plot
+#   var - variable to plot (wind_speed or gust_speed)
 #   adjust - whether to subtract 360 degrees from wind direction.
 #   no return value
 
@@ -2055,7 +2060,7 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 	mm_rows = len(mm)
 
 	# add datetime
-	dt_seq = []
+	dt_list = []
 
 	for i in range(0, mm_rows):
 		year = int(mm.date_time[i][0:4])
@@ -2064,9 +2069,9 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 		hour = int(mm.date_time[i][11:13])
 		minute = int(mm.date_time[i][14:16])
 
-		dt_seq.append(dt.datetime(year, month, day, hour, minute))
+		dt_list.append(dt.datetime(year, month, day, hour, minute))
 
-	mm['dt'] = dt_seq
+	mm['dt'] = dt_list
 
 	# get axis labels
 	x_var = "wind_dir"
@@ -2084,16 +2089,16 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 
 	# adjust wind direction
 	if adjust == True:
-		wdir_seq = []
+		wdir_list = []
 
 		for i in range(0, mm_rows):
 			wdir = mm.wind_dir[i]
 			if wdir > 180:
 				wdir = wdir - 360
 
-			wdir_seq.append(wdir)
+			wdir_list.append(wdir)
 
-		mm['wind_dir2'] = wdir_seq
+		mm['wind_dir2'] = wdir_list
 		x_var = "wind_dir2"
 
 	if (start_datetime != ""):
@@ -2151,7 +2156,7 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 #   site_name - name of site
 #   start_year - optional start year
 #   end_year - optional end year
-#   var - variable to plot
+#   var - variable to plot (wind_speed, gust_speed, or wind_direction)
 #   no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
@@ -2188,12 +2193,12 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 		sys.exit()
 
 	# subset by year
-	yr_seq = []
+	yr_list = []
 
 	for i in range(0, kk_rows):
-		yr_seq.append(int(kk.date_time[i][0:4]))
+		yr_list.append(int(kk.date_time[i][0:4]))
 
-	kk['year'] = yr_seq
+	kk['year'] = yr_list
 
 	if start_year != "":
 		syear = start_year
@@ -2250,7 +2255,8 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 # peak wind speed, wind direction, cardinal wind direction, gale wind 
 # duration, and hurricane wind duration for a given hurricane.
 #   hur_id - hurricane id
-#   var - variable to plot
+#   var - variable to plot (wind_speed, fujita_scale, wind_direction,
+#     wind_compass, gale_duration, hurricane_duration)
 #   no return value
 
 def hurrecon_plot_region(hur_id, var="fujita_scale"):
@@ -2280,8 +2286,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	tt = pd.read_csv(track_file)
 	index = np.where(tt.hur_id == hur_id)[0].tolist()
 
-	lat_seq = [tt.latitude[index[i]] for i in range(0, len(index))]
-	lon_seq = [tt.longitude[index[i]] for i in range(0, len(index))]
+	lat_list = [tt.latitude[index[i]] for i in range(0, len(index))]
+	lon_list = [tt.longitude[index[i]] for i in range(0, len(index))]
 
 	# get colormaps with white background
 	viridis = plt.get_cmap('viridis')
@@ -2299,7 +2305,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Fujita Scale')
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=rainbow, vmin=0.9)
@@ -2319,7 +2325,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Wind Speed (m/s)')
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2337,7 +2343,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Wind Direction (deg)')
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2355,7 +2361,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Wind Direction')
 			img = hur_tif.read(4)		
 			plt.imshow(img, cmap=rainbow, vmin=0.9)
@@ -2375,7 +2381,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_seq, lat_seq, color='black', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Gale Winds (min)')
 			img = hur_tif.read(5)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2393,6 +2399,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Hurricane Winds (min)')
 			img = hur_tif.read(6)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2411,7 +2418,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 
 # hurrecon_plot_region_all creates regional plots of maximum enhanced Fujita
 # value and number of storms for each enhanced Fujita value for all hurricanes.
-#   var - variable to plot
+#   var - variable to plot (efmax, ef0, ef1, ef2, ef3, ef4, or ef5)
 #   tracks - whether to also plot hurricane tracks
 #   no return value
 
