@@ -470,25 +470,42 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 
 	return mm
 
-# calculate_range_bearing returns a list containing the range (kilometers)
-# and bearing (degrees) from one point to another using the latitude & longitude
+# estimate_range uses the Pythagorean equation to estimate the range 
+# (kilometers) from one point to another based on the latitude & longitude 
+# of each point. Note: overestimates range unless on same meridian.
+#   lat1 - latitude of first point
+#   lon1 - longitude of first point
+#   lat2 - latitude of second point
+#   lon2 - longitude of second point
+#   returns range in kilometers
+
+def estimate_range(lat1, lon1, lat2, lon2):
+	R = 6367 # radius of earth in kilometers (at latitude 45 degrees)
+	d2r = 0.017453292519943295  # pi / 180
+
+	lat_avg = d2r*(lat1 + lat2)/2
+	x = d2r*(lon1 - lon2)*math.cos(d2r*lat_avg)
+	y = d2r*(lat1 - lat2)
+	range_est = R * math.sqrt(x**2 + y**2)
+
+	return range_est
+
+# calculate_range uses the Haversine formula to calculate the range 
+# (kilometers) from one point to another based on the latitude & longitude
 # of each point.
 #   lat1 - latitude of first point
 #   lon1 - longitude of first point
 #   lat2 - latitude of second point
 #   lon2 - longitude of second point
-#   returns a list containing range & bearing
+#   returns range in kilometers
 
-def calculate_range_bearing(lat1, lon1, lat2, lon2):
+def calculate_range(lat1, lon1, lat2, lon2):
 	R = 6367 # radius of earth in kilometers (at latitude 45 degrees)
-
 	d2r = 0.017453292519943295  # pi / 180
-	r2d = 57.29577951308232  # 180 / pi
 
 	# nearly same point
 	if abs(lat2 - lat1) < 0.000001 and abs(lon2 - lon1) < 0.000001:
 		rang = 0
-		bear = 0
 
 	else:
 		# date line
@@ -503,12 +520,36 @@ def calculate_range_bearing(lat1, lon1, lat2, lon2):
 		rlon1 = d2r*lon1
 		rlon2 = d2r*lon2
 
-		cos_rlat1 = math.cos(rlat1)
-		cos_rlat2 = math.cos(rlat2)
-
-		A = (math.sin((rlat2-rlat1)/2))**2 + cos_rlat1*cos_rlat2*(math.sin((rlon2-rlon1)/2))**2
+		A = (math.sin((rlat2-rlat1)/2))**2 + math.cos(rlat1)*math.cos(rlat2)*(math.sin((rlon2-rlon1)/2))**2
 		C = 2 * math.atan2(math.sqrt(A), math.sqrt(1-A))
 		rang = R * C
+
+	return rang
+
+# calculate_bearing uses the Haversine formula to calculate the bearing 
+# (degrees) from one point to another based on the latitude & longitude 
+# of each point.
+#   lat1 - latitude of first point
+#   lon1 - longitude of first point
+#   lat2 - latitude of second point
+#   lon2 - longitude of second point
+#   returns bearing in degrees
+
+def calculate_bearing(lat1, lon1, lat2, lon2):
+	R = 6367 # radius of earth in kilometers (at latitude 45 degrees)
+	d2r = 0.017453292519943295  # pi / 180
+	r2d = 57.29577951308232  # 180 / pi
+
+	# nearly same point
+	if abs(lat2 - lat1) < 0.000001 and abs(lon2 - lon1) < 0.000001:
+		bear = 0
+
+	else:
+		# date line
+		if lon1 > 90 and lon2 < -90:
+			lon2 <- lon2 + 360
+		if lon1 < -90 and lon2 > 90:
+			lon1 <- lon1 + 360
 
 		# same longitude
 		if lon1 == lon2:
@@ -519,9 +560,14 @@ def calculate_range_bearing(lat1, lon1, lat2, lon2):
 
 		# different longitude
 		else:
+			# convert degrees to radians
+			rlat1 = d2r*lat1
+			rlat2 = d2r*lat2
+			rlon1 = d2r*lon1
+			rlon2 = d2r*lon2
 
-			B2 = math.atan2(math.sin(rlon2-rlon1)*cos_rlat2, cos_rlat1*math.sin(rlat2) - 
-				math.sin(rlat1)*cos_rlat2*math.cos(rlon2-rlon1))
+			B2 = math.atan2(math.sin(rlon2-rlon1)*math.cos(rlat2), math.cos(rlat1)*math.sin(rlat2) - 
+				math.sin(rlat1)*math.cos(rlat2)*math.cos(rlon2-rlon1))
 
 			# convert radians to degrees
 			B = r2d*B2
@@ -533,7 +579,45 @@ def calculate_range_bearing(lat1, lon1, lat2, lon2):
 				# quadrants II, III
 				bear = 360 + B
 
-	return [rang, bear]
+	return bear
+
+# get_maximum_wind_speed returns the maximum sustained wind speed for
+# the specified hurricane.
+#   hur_id - hurricane id
+#   returns maximum sustained wind speed (meters/second)
+
+def get_maximum_wind_speed(hur_id):
+	# read hurricane track file
+	cwd = os.getcwd()
+	track_file = cwd + "/input/tracks.csv"
+	check_file_exists(track_file)
+	zz = pd.read_csv(track_file)
+
+	# subset by hurricane name
+	xx = zz.loc[zz.hur_id == hur_id]
+
+	# get maximum wind speed
+	wmax = max(xx.wind_max)
+
+	return wmax
+
+# get_maximum_range estimates the range (kilometers) at which sustained wind
+# speeds are less than gale s(17.5 meters/second).
+#   wmax - maximum sustained wind speed (meters/second)
+#   rmw - radius of maximum winds (kilometers)
+#   s_par - profile constant
+#   returns range in kilometers
+
+def get_maximum_range(wmax, rmw, s_par):
+	rang = rmw
+	wspd = 100
+
+	while wspd > 17.5:
+		rang = rang + 10
+		x = (rmw/rang)**s_par
+		wspd = wmax * math.sqrt(x * math.exp(1-x))
+
+	return rang
 
 # interpolate_hurricane_speed_bearing performs a linear interpolation of hurricane
 # speed (meters/second) and bearing (degrees) along a hurricane track based on
@@ -552,14 +636,17 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 
 	# calculate mid-segment hurricane speed & bearing
 	for i in range(0, tt_rows-1):
-		hur_range_bear = calculate_range_bearing(tt.latitude[i], tt.longitude[i], 
+		hur_range = calculate_range(tt.latitude[i], tt.longitude[i], 
+			tt.latitude[i+1], tt.longitude[i+1])
+
+		hur_bear = calculate_bearing(tt.latitude[i], tt.longitude[i], 
 			tt.latitude[i+1], tt.longitude[i+1])
 
 		interval_sec = (tt.jd[i+1] - tt.jd[i]) * 1440 * 60
 
 		jd_list.append(tt.jd[i] + (tt.jd[i+1] - tt.jd[i])/2)
-		spd_list.append(1000*hur_range_bear[0]/interval_sec)
-		bear_list.append(hur_range_bear[1])
+		spd_list.append(1000*hur_range/interval_sec)
+		bear_list.append(hur_bear)
 
 	# create data frame for mid-segment values
 	vv_cols = ['jd', 'hur_bear', 'hur_spd']
@@ -641,11 +728,11 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 def calculate_site_range_bearing(mm, site_latitude, site_longitude):
 	mm_rows = len(mm)
 
-	site_range_bear = [calculate_range_bearing(site_latitude, site_longitude, 
+	mm['site_bear'] = [calculate_bearing(site_latitude, site_longitude, 
 		mm.latitude[i], mm.longitude[i]) for i in range(0, mm_rows)]
 
-	mm['site_bear']  = [site_range_bear[i][1] for i in range(0, mm_rows)]
-	mm['site_range'] = [site_range_bear[i][0] for i in range(0, mm_rows)]
+	mm['site_range'] = [calculate_range(site_latitude, site_longitude, 
+		mm.latitude[i], mm.longitude[i]) for i in range(0, mm_rows)]
 
 	return mm
 
@@ -898,6 +985,7 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 	cc = np.zeros((nrows, ncols), dtype=np.int16)  # cardinal wind direction (1-8)
 	gg = np.zeros((nrows, ncols), dtype=np.int16)  # duration of gale force winds (minutes)
 	hh = np.zeros((nrows, ncols), dtype=np.int16)  # duration of hurricane winds (minutes)
+	xx = np.zeros((nrows, ncols), dtype=np.float)  # floating point wind speed (m/s)
 
 	# create array from raster
 	land_water_array = land_water.read(1)
@@ -913,6 +1001,12 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 	inflow = [get_fixed_model_parameters(1)[1], get_fixed_model_parameters(2)[1]]
 	friction = [get_fixed_model_parameters(1)[2], get_fixed_model_parameters(2)[2]]
 	gust = [get_fixed_model_parameters(1)[3], get_fixed_model_parameters(2)[3]]
+
+	# get maximum wind speed over track
+	wmax = get_maximum_wind_speed(hur_id)
+
+	# get maximum range for gale winds
+	range_maximum = get_maximum_range(wmax, rmw, s_par)
 
 	# record total elasped time if timing is True
 	if timing == True:
@@ -934,33 +1028,43 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 				friction_factor = friction[cover_type-1]
 				gust_factor = gust[cover_type-1]
 
-				# range & bearing from site to hurricane center
-				site_range_bear = [calculate_range_bearing(site_latitude, site_longitude,
-						mm.latitude[k], mm.longitude[k]) for k in range(0, len(mm))]
+				for k in range(0, len(mm)):
+					hur_latitude  = mm.latitude[k]
+					hur_longitude = mm.longitude[k]
 
-				# wind speed (m/s)
-				wspd = [calculate_wind_speed(site_range_bear[k][1], site_range_bear[k][0], mm.latitude[k], 
-					mm.hur_bear[k], mm.hur_spd[k], mm.wind_max[k], rmw, s_par, asymmetry_factor, friction_factor)
-					for k in range(0, len(mm))]
+					# site range
+					site_range = calculate_range(site_latitude, site_longitude,
+						hur_latitude, hur_longitude)
 
-				# update values if gale or higher
-				wmax = max(wspd)
-				if wmax >= 17.5:
-					# duration of gale force winds (minutes)
-					index = [index for index in wspd if index >= 17.5]
-					gg[nrows-i-1][j] = gg[nrows-i-1][j] + len(index)*time_step
+					# skip if too far away
+					if site_range < range_maximum:
+						# site bearing
+						site_bear = calculate_bearing(site_latitude, site_longitude,
+							hur_latitude, hur_longitude)
 
-					# duration of hurricane force winds (minutes)
-					index = [index for index in wspd if index >= 33]
-					hh[nrows-i-1][j] = hh[nrows-i-1][j] + len(index)*time_step
+						# wind speed (m/s)
+						wspd = calculate_wind_speed(site_bear, site_range, hur_latitude, 
+							mm.hur_bear[k], mm.hur_spd[k], mm.wind_max[k], rmw, s_par, 
+							asymmetry_factor, friction_factor)
 
-					# peak wind speed
-					index = wspd.index(wmax)
-					ss[nrows-i-1][j] = int(round(wmax))
+						# update values if gale or higher
+						if wspd >= 17.5:
+							# duration of gale force winds (minutes)
+							gg[nrows-i-1][j] = gg[nrows-i-1][j] + time_step
 
-					# peak wind direction			
-					wdir = calculate_wind_direction(mm.latitude[0], site_range_bear[index][1], inflow_angle)
-					dd[nrows-i-1][j] = int(round(wdir))
+							# duration of hurricane force winds (minutes)
+							if wspd >= 33:
+								hh[nrows-i-1][j] = hh[nrows-i-1][j] + time_step
+
+							# peak wind speed
+							if xx[nrows-i-1][j] < wspd:							
+								xx[nrows-i-1][j] = wspd
+
+								ss[nrows-i-1][j] = int(round(wspd))
+
+								# peak wind direction			
+								wdir = calculate_wind_direction(hur_latitude, site_bear, inflow_angle)
+								dd[nrows-i-1][j] = int(round(wdir))
 
 		# report progress
 		if timing == True:
