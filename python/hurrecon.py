@@ -21,7 +21,7 @@
 # Emery R. Boose
 # May 2020
 
-# Python version 3.7.4.
+# Python version 3.7.7.
 
 # Note: Pandas datetime functions are currently limited to the years 
 # 1678-2262 and so are not used here.
@@ -536,7 +536,6 @@ def calculate_range(lat1, lon1, lat2, lon2):
 #   returns bearing in degrees
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
-	R = 6367 # radius of earth in kilometers (at latitude 45 degrees)
 	d2r = 0.017453292519943295  # pi / 180
 	r2d = 57.29577951308232  # 180 / pi
 
@@ -2088,6 +2087,10 @@ def hurrecon_summarize_site(hur_id, site_name):
 def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='', 
 	var="wind_speed"):
 	
+	# register matplotlib converters
+	from pandas.plotting import register_matplotlib_converters
+	register_matplotlib_converters()
+
 	# get current working directory
 	cwd = os.getcwd()
 
