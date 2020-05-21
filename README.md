@@ -7,9 +7,8 @@ a single site or an entire region. Hurricane track and intensity data may be imp
 directly from the US National Hurricane Center's HURDAT2 database.
 
 HURRECON is available in both R (HurreconR) and Python (HurreconPython) versions. 
-The R version currently provides better performance. The model is an updated version 
-of the original HURRECON model written in Borland Pascal for use with Idrisi 
-(see below for details).
+The model is an updated version of the original HURRECON model written in Borland 
+Pascal for use with Idrisi (see below for details).
 
 Please note: both versions are currently under development and subject to change.
 

@@ -416,14 +416,13 @@ def read_hurricane_track_file(hur_id):
 # specified time step.
 #   tt - data frame of track data
 #   time_step - time step (minutes)
-#   returns a data frame of interpolated data
+#   returns lists of year, Julian day, latitude, longitude, max wind speed
 
 def interpolate_hurricane_location_max_wind(tt, time_step):
 	tt_rows = len(tt)
 
 	# initialize lists
 	jd_list = []
-	dt_list = []
 	yr_list = []
 	lat_list = []
 	lon_list = []
@@ -444,11 +443,9 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 		del lon[-1]
 		del wmax[-1]
 
-		dt = [''] * (new_rows - 1)
 		yr = [int(tt.date_time[0][0:4])] * (new_rows - 1)
 
 		jd_list.extend(jd)
-		dt_list.extend(dt)
 		yr_list.extend(yr)
 		lat_list.extend(lat)
 		lon_list.extend(lon)
@@ -456,17 +453,12 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 
 	# add final row
 	jd_list.append(tt.jd[tt_rows-1])
-	dt_list.append('')
 	yr_list.append(int(tt.date_time[tt_rows-1][0:4]))
 	lat_list.append(tt.latitude[tt_rows-1])
 	lon_list.append(tt.longitude[tt_rows-1])
 	wmax_list.append(tt.wind_max[tt_rows-1])
 
-	# create data frame for modeled data
-	mm_cols = ['date_time', 'year', 'jd', 'latitude', 'longitude', 'wind_max']
-	
-	mm = pd.DataFrame(data=list(zip(dt_list, yr_list, jd_list, lat_list, lon_list, wmax_list)), 
-		columns=mm_cols)
+	mm = [yr_list, jd_list, lat_list, lon_list, wmax_list]
 
 	return mm
 
@@ -622,16 +614,16 @@ def get_maximum_range(wmax, rmw, s_par):
 # speed (meters/second) and bearing (degrees) along a hurricane track based on
 # mid-segment values.
 #   tt - data frame of track values
-#   mm - data frame of modeled values
-#   returns a data frame of modeled values
+#   jd_list - list of Julian day values
+#   returns lists of hurricane speed & bearing
 
-def interpolate_hurricane_speed_bearing(tt, mm):
+def interpolate_hurricane_speed_bearing(tt, jd_list):
 	tt_rows = len(tt)
 
 	# intialize lists
-	jd_list = []
-	spd_list = []
-	bear_list = []
+	vv_jd = []
+	vv_spd = []
+	vv_bear = []
 
 	# calculate mid-segment hurricane speed & bearing
 	for i in range(0, tt_rows-1):
@@ -643,15 +635,12 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 
 		interval_sec = (tt.jd[i+1] - tt.jd[i]) * 1440 * 60
 
-		jd_list.append(tt.jd[i] + (tt.jd[i+1] - tt.jd[i])/2)
-		spd_list.append(1000*hur_range/interval_sec)
-		bear_list.append(hur_bear)
+		vv_jd.append(tt.jd[i] + (tt.jd[i+1] - tt.jd[i])/2)
+		vv_spd.append(1000*hur_range/interval_sec)
+		vv_bear.append(hur_bear)
 
-	# create data frame for mid-segment values
-	vv_cols = ['jd', 'hur_bear', 'hur_spd']
-	vv = pd.DataFrame(data=list(zip(jd_list, bear_list, spd_list)), columns=vv_cols)
-
-	vv_rows = len(vv)
+	# get number of rows
+	vv_rows = len(vv_jd)
 
 	# intialize lists
 	bear_list = []
@@ -661,23 +650,23 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 	for i in range(0, vv_rows+1):
 		# before mid-point of 1st segment
 		if i == 0:
-			index = np.where(mm.jd <= vv.jd[0])[0].tolist()
+			index = np.where(jd_list <= vv_jd[0])[0]
 			new_rows = len(index)
 
-			bear = [vv.hur_bear[0]] * new_rows
-			spd = [vv.hur_spd[0]] * new_rows
+			bear = [vv_bear[0]] * new_rows
+			spd = [vv_spd[0]] * new_rows
 
 			bear_list.extend(bear)
 			spd_list.extend(spd)
 
 		# interpolate between mid-points
 		elif i <= vv_rows-1:
-			index = np.where((mm.jd > vv.jd[i-1]) & (mm.jd <= vv.jd[i]))[0].tolist()
+			index = np.where((jd_list > vv_jd[i-1]) & (jd_list <= vv_jd[i]))[0]
 			new_rows = len(index)
 
 			# bearing
-			b1 = vv.hur_bear[i-1]
-			b2 = vv.hur_bear[i]
+			b1 = vv_bear[i-1]
+			b2 = vv_bear[i]
 
 			if b2 - b1 > 180:
 				b1 = b1 + 360
@@ -687,18 +676,18 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 			bear = np.linspace(start=b1, stop=b2, num=new_rows).tolist()
 			
 			# speed
-			spd = np.linspace(start=vv.hur_spd[i-1], stop=vv.hur_spd[i], num=new_rows).tolist()
+			spd = np.linspace(start=vv_spd[i-1], stop=vv_spd[i], num=new_rows).tolist()
 
 			bear_list.extend(bear)
 			spd_list.extend(spd)
 
 		# after mid-point of last segment
 		else:
-			index = np.where(mm.jd > vv.jd[vv_rows-1])[0].tolist()
+			index = np.where(jd_list > vv_jd[vv_rows-1])[0]
 			new_rows = len(index)
 
-			bear = [vv.hur_bear[vv_rows-1]] * new_rows
-			spd = [vv.hur_spd[vv_rows-1]] * new_rows
+			bear = [vv_bear[vv_rows-1]] * new_rows
+			spd = [vv_spd[vv_rows-1]] * new_rows
 
 			bear_list.extend(bear)
 			spd_list.extend(spd)
@@ -711,27 +700,28 @@ def interpolate_hurricane_speed_bearing(tt, mm):
 		if bear_list[i] > 360:
 			bear_list[i] = bear_list[i] - 360
 
-	# add to modeled data frame
-	mm['hur_bear'] = bear_list
-	mm['hur_spd'] = spd_list
+	mm = [spd_list, bear_list]
 
 	return mm
 
 # calculate_site_range_bearing calculates the range (kilometers) and bearing
 # (degrees) from a site to the hurricane center.
-#   mm - data frame of modeled values
-#   site_latitude - latitude of site
-#   site_longitude - longitude of site
-#   returns a data frame of modeled values
+#   lat_list - list of hurricane latitudes (degrees)
+#	lon_list - list of hurricane longitudes (degrees)
+#   site_latitude - latitude of site (degrees)
+#   site_longitude - longitude of site (degrees)
+#   returns lists of site range & bearing
 
-def calculate_site_range_bearing(mm, site_latitude, site_longitude):
-	mm_rows = len(mm)
+def calculate_site_range_bearing(lat_list, lon_list, site_latitude, site_longitude):
+	mm_rows = len(lat_list)
 
-	mm['site_bear'] = [calculate_bearing(site_latitude, site_longitude, 
-		mm.latitude[i], mm.longitude[i]) for i in range(0, mm_rows)]
+	site_range = [calculate_range(site_latitude, site_longitude, 
+		lat_list[i], lon_list[i]) for i in range(0, mm_rows)]
 
-	mm['site_range'] = [calculate_range(site_latitude, site_longitude, 
-		mm.latitude[i], mm.longitude[i]) for i in range(0, mm_rows)]
+	site_bear = [calculate_bearing(site_latitude, site_longitude, 
+		lat_list[i], lon_list[i]) for i in range(0, mm_rows)]
+
+	mm = [site_range, site_bear]
 
 	return mm
 
@@ -772,8 +762,8 @@ def calculate_wind_direction (hurr_lat, site_bear, inflow_angle):
 #   returns a calculated sustained wind speed (meters/second)
 
 def calculate_wind_speed(site_bear, site_range, hur_lat, hur_bear, hur_spd, 
-  wind_max, rmw, s_par, asymmetry_factor, friction_factor):
-
+ 	wind_max, rmw, s_par, asymmetry_factor, friction_factor):
+	
 	# hurricane eye (avoid division by zero)
 	if site_range == 0:
 		wind_spd = 0 
@@ -842,7 +832,12 @@ def calculate_enhanced_fujita_scale(gust_spd):
 
 # calculate_wind_speed_direction calculates the wind speed, gust speed, wind
 # direction, and enhanced Fujita scale wind damage at a site.
-#   mm - data frame of modeled values
+#   sbear_list - list of site bearings (degrees)
+#	srange_list - list of site ranges (kilometers)
+#	lat_list - list of hurricane latitudes (degrees)
+#	bear_list - list of hurricane bearings (degrees)
+#	spd_list - list of hurricane forward speeds (meters/second)
+#	wmax_list - list of maximum sustained wind speeds (meters/second)
 #   inflow_angle - cross-isobar inflow angle (degrees)
 #   cover_type - cover type (1=water, 2=land)
 #   rmw - radius of maximum winds (kilometers)
@@ -850,47 +845,45 @@ def calculate_enhanced_fujita_scale(gust_spd):
 #   asymmetry_factor - asymmetry factor
 #   friction_factor - friction factor
 #   gust_factor - gust factor
-#   returns a data frame of modeled values
+#   returns lists of wind speed, gust speed, wind direction, enhanced Fujita scale
 
-def calculate_wind_speed_direction(mm, inflow_angle, cover_type, rmw, 
-	s_par, asymmetry_factor, friction_factor, gust_factor):
-	
-	mm_rows = len(mm)
+def calculate_wind_speed_direction(sbear_list, srange_list, lat_list, bear_list,
+	spd_list, wmax_list, inflow_angle, cover_type, rmw, s_par, asymmetry_factor, 
+	friction_factor, gust_factor):
+
+	mm_rows = len(sbear_list)
 
 	# wind speed
-	wspd = [calculate_wind_speed(mm.site_bear[i], mm.site_range[i], mm.latitude[i], 
-			mm.hur_bear[i], mm.hur_spd[i], mm.wind_max[i], rmw, s_par, asymmetry_factor, 
-			friction_factor) for i in range(0, mm_rows)]
+	wspd = [calculate_wind_speed(sbear_list[i], srange_list[i], lat_list[i], bear_list[i], 
+		spd_list[i], wmax_list[i], rmw, s_par, asymmetry_factor, friction_factor) 
+		for i in range(0, mm_rows)]
 
 	# gust speed
 	gust = [calculate_wind_gust(wspd[i], gust_factor) for i in range(0, mm_rows)]
 
 	# wind direction
-	wdir = [calculate_wind_direction(mm.latitude[i], mm.site_bear[i], inflow_angle)
+	wdir = [calculate_wind_direction(lat_list[i], sbear_list[i], inflow_angle)
 		for i in range(0, mm_rows)]
 
 	# enhanced Fujita scale
 	ef = [calculate_enhanced_fujita_scale(gust[i]) for i in range(0, mm_rows)]
 
-	mm['rmw'] = rmw
-	mm['s_par'] = s_par
-	mm['wind_dir'] = wdir
-	mm['wind_spd'] = wspd
-	mm['gust_spd'] = gust
-	mm['ef_sca'] = ef
+	mm = [wspd, gust, wdir, ef]
 
 	return mm
 
-# add_standard_date_time adds a standard datetime column in the format
-# YYYY-MM-DDThh:mm to a data frame of modeled values.
-#   mm - data frame of modeled values
-#   returns a data frame of modeled values
+# add_standard_date_time creates a list of standar datetime values in the format
+# YYYY-MM-DDThh:mm
+#   yr_list - list of years
+#	jd_list - list of Julian days
+#   returns a list of datetime values
 
-def add_standard_date_time(mm):
-	mm_rows = len(mm)
+def add_standard_date_time(yr_list, jd_list):
+	mm_rows = len(yr_list)
 
-	mm['date_time'] = [calculate_standard_datetime(mm.year[i], mm.jd[i])
+	mm = [calculate_standard_datetime(yr_list[i], jd_list[i])
 		for i in range(0, mm_rows)]
+	
 	return mm
 
 # get_peak_values returns a data frame of peak values for a given
@@ -951,14 +944,23 @@ def get_peak_values(hur_id, site_name, mm):
 # Fujita scale, wind direction (degrees), cardinal wind direction, gale wind duration 
 # (minutes), and hurricane wind duration (minutes) for a given hurricane over a region.
 #   hur_id - hurricane id
-#   mm - data frame of modeled values
+#	lat_list - list of hurricane latitudes (degrees)
+#	lon_list - list of hurricane longitudes (degrees)
+#	wmax_list - list of maximum sustained wind speeds (meters/second)
+#	bear_list - list of hurricane bearings (degrees)
+#	spd_list - list of hurricane forward speeds (meters/second)
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate values over water
 #   timing - whether to report progress
 #   returns a list containng 6 raster layers
 
-def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
+def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list, 
+	spd_list, width, time_step, water, timing):
+
+	# get number of rows
+	mm_rows = len(lat_list)
+	
 	# read land-water file
 	cwd = os.getcwd()
 	land_water_file = cwd + "/input/land_water.tif"
@@ -1027,9 +1029,9 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 				friction_factor = friction[cover_type-1]
 				gust_factor = gust[cover_type-1]
 
-				for k in range(0, len(mm)):
-					hur_latitude  = mm.latitude[k]
-					hur_longitude = mm.longitude[k]
+				for k in range(0, mm_rows):
+					hur_latitude  = lat_list[k]
+					hur_longitude = lon_list[k]
 
 					# site range
 					site_range = calculate_range(site_latitude, site_longitude,
@@ -1043,7 +1045,7 @@ def get_regional_peak_wind(hur_id, mm, width, time_step, water, timing):
 
 						# wind speed (m/s)
 						wspd = calculate_wind_speed(site_bear, site_range, hur_latitude, 
-							mm.hur_bear[k], mm.hur_spd[k], mm.wind_max[k], rmw, s_par, 
+							bear_list[k], spd_list[k], wmax_list[k], rmw, s_par, 
 							asymmetry_factor, friction_factor)
 
 						# update values if gale or higher
@@ -1670,23 +1672,54 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 	gust_factor = fixed[3]
 
 	# read hurricane track file
-	track = read_hurricane_track_file(hur_id)
+	tt = read_hurricane_track_file(hur_id)
 
 	# interpolate hurricane location & max wind speed
-	modeled = interpolate_hurricane_location_max_wind(track, time_step)
+	mm = interpolate_hurricane_location_max_wind(tt, time_step)
+	yr_list = mm[0]
+	jd_list = mm[1]
+	lat_list = mm[2]
+	lon_list = mm[3]
+	wmax_list = mm[4]
+
+	# get number of rows
+	mm_rows = len(mm[0])
 
 	# interpolate hurricane speed & bearing
-	modeled = interpolate_hurricane_speed_bearing(track, modeled)
+	mm = interpolate_hurricane_speed_bearing(tt, jd_list)
+	spd_list = mm[0]
+	bear_list = mm[1]
 
 	# calculate range & bearing from site to hurricane center
-	modeled = calculate_site_range_bearing(modeled, site_latitude, site_longitude)
+	mm = calculate_site_range_bearing(lat_list, lon_list, site_latitude, site_longitude)
+	srange_list = mm[0]
+	sbear_list = mm[1]
 
 	# calculate wind speed, wind direction & enhanced Fujita scale at site
-	modeled = calculate_wind_speed_direction(modeled, inflow_angle, cover_type, rmw, 
-		s_par, asymmetry_factor, friction_factor, gust_factor)
+	mm = calculate_wind_speed_direction(sbear_list, srange_list, lat_list, bear_list, 
+		spd_list, wmax_list, inflow_angle, cover_type, rmw, s_par, asymmetry_factor, 
+		friction_factor, gust_factor)
+
+	wspd_list = mm[0]
+	gust_list = mm[1]
+	wdir_list = mm[2]
+	ef_list   = mm[3]
 
 	# add standard date & time
-	modeled = add_standard_date_time(modeled)
+	dt_list = add_standard_date_time(yr_list, jd_list)
+
+	# add constant parameters
+	rmw_list = [rmw] * mm_rows
+	spar_list = [s_par] * mm_rows
+
+	# create data frame
+	mm_cols = ["date_time", "year", "jd", "latitude", "longitude", "wind_max", "hur_bear",
+		"hur_spd", "site_bear", "site_range", "rmw", "s_par", "wind_dir", "wind_spd",
+		"gust_spd", "ef_sca"]
+
+	mm = pd.DataFrame(data=list(zip(dt_list, yr_list, jd_list, lat_list, lon_list, wmax_list, 
+		bear_list, spd_list, sbear_list, srange_list, rmw_list, spar_list, wdir_list, wspd_list, 
+		gust_list, ef_list)), columns=mm_cols)
 
 	# display total elapsed time
 	if timing == True:
@@ -1696,11 +1729,11 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 	if save == True:
 		# save modeled data to CSV file
 		modeled_file = cwd + "/site/" + hur_id + " " + site_name + ".csv"
-		modeled.to_csv(modeled_file, index=False)
+		mm.to_csv(modeled_file, index=False)
 		print("Saving to", modeled_file)
 	else:
 		# return modeled data as data frame
-		return modeled
+		return mm
 
 # hurrecon_model_site_all creates a table of peak values for all hurricanes
 # for a given site. If width is True, the radius of maximum wind (rmw) and 
@@ -1832,16 +1865,23 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 		print("Time step =", time_step, "minutes")
  
  	# read hurricane track file
-	track = read_hurricane_track_file(hur_id)
+	tt = read_hurricane_track_file(hur_id)
 
 	# interpolate hurricane location & max wind speed
-	modeled = interpolate_hurricane_location_max_wind(track, time_step)
+	mm = interpolate_hurricane_location_max_wind(tt, time_step)
+	jd_list = mm[1]
+	lat_list = mm[2]
+	lon_list = mm[3]
+	wmax_list = mm[4]
 
 	# interpolate hurricane speed & bearing
-	modeled = interpolate_hurricane_speed_bearing(track, modeled)
+	mm = interpolate_hurricane_speed_bearing(tt, jd_list)
+	spd_list = mm[0]
+	bear_list = mm[1]
 
 	# get modeled values over region
-	peak_list = get_regional_peak_wind(hur_id, modeled, width, time_step, water, timing)
+	peak_list = get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list,
+		bear_list, spd_list, width, time_step, water, timing)
 
 	# output
 	if (save == True):
