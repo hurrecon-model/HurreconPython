@@ -422,8 +422,8 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 	tt_rows = len(tt)
 
 	# initialize lists
-	jd_list = []
 	yr_list = []
+	jd_list = []
 	lat_list = []
 	lon_list = []
 	wmax_list = []
@@ -445,15 +445,15 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 
 		yr = [int(tt.date_time[0][0:4])] * (new_rows - 1)
 
-		jd_list.extend(jd)
 		yr_list.extend(yr)
+		jd_list.extend(jd)
 		lat_list.extend(lat)
 		lon_list.extend(lon)
 		wmax_list.extend(wmax)
 
 	# add final row
-	jd_list.append(tt.jd[tt_rows-1])
 	yr_list.append(int(tt.date_time[tt_rows-1][0:4]))
+	jd_list.append(tt.jd[tt_rows-1])
 	lat_list.append(tt.latitude[tt_rows-1])
 	lon_list.append(tt.longitude[tt_rows-1])
 	wmax_list.append(tt.wind_max[tt_rows-1])
@@ -839,7 +839,6 @@ def calculate_enhanced_fujita_scale(gust_spd):
 #	spd_list - list of hurricane forward speeds (meters/second)
 #	wmax_list - list of maximum sustained wind speeds (meters/second)
 #   inflow_angle - cross-isobar inflow angle (degrees)
-#   cover_type - cover type (1=water, 2=land)
 #   rmw - radius of maximum winds (kilometers)
 #   s_par - profile exponent
 #   asymmetry_factor - asymmetry factor
@@ -848,27 +847,27 @@ def calculate_enhanced_fujita_scale(gust_spd):
 #   returns lists of wind speed, gust speed, wind direction, enhanced Fujita scale
 
 def calculate_wind_speed_direction(sbear_list, srange_list, lat_list, bear_list,
-	spd_list, wmax_list, inflow_angle, cover_type, rmw, s_par, asymmetry_factor, 
-	friction_factor, gust_factor):
+	spd_list, wmax_list, inflow_angle, rmw, s_par, asymmetry_factor, friction_factor, 
+	gust_factor):
 
 	mm_rows = len(sbear_list)
 
 	# wind speed
-	wspd = [calculate_wind_speed(sbear_list[i], srange_list[i], lat_list[i], bear_list[i], 
-		spd_list[i], wmax_list[i], rmw, s_par, asymmetry_factor, friction_factor) 
-		for i in range(0, mm_rows)]
+	wspd_list = [calculate_wind_speed(sbear_list[i], srange_list[i], lat_list[i], 
+		bear_list[i], spd_list[i], wmax_list[i], rmw, s_par, asymmetry_factor, 
+		friction_factor) for i in range(0, mm_rows)]
 
 	# gust speed
-	gust = [calculate_wind_gust(wspd[i], gust_factor) for i in range(0, mm_rows)]
+	gspd_list = [calculate_wind_gust(wspd_list[i], gust_factor) for i in range(0, mm_rows)]
 
 	# wind direction
-	wdir = [calculate_wind_direction(lat_list[i], sbear_list[i], inflow_angle)
+	wdir_list = [calculate_wind_direction(lat_list[i], sbear_list[i], inflow_angle)
 		for i in range(0, mm_rows)]
 
 	# enhanced Fujita scale
-	ef = [calculate_enhanced_fujita_scale(gust[i]) for i in range(0, mm_rows)]
+	ef_list = [calculate_enhanced_fujita_scale(gspd_list[i]) for i in range(0, mm_rows)]
 
-	mm = [wspd, gust, wdir, ef]
+	mm = [wspd_list, gspd_list, wdir_list, ef_list]
 
 	return mm
 
@@ -894,6 +893,7 @@ def add_standard_date_time(yr_list, jd_list):
 #   returns a data frame of peak values
 
 def get_peak_values(hur_id, site_name, mm):
+	
 	# get time step in minutes
 	h1 = int(mm.date_time[0][12:13])
 	m1 = int(mm.date_time[0][15:16])
@@ -936,7 +936,7 @@ def get_peak_values(hur_id, site_name, mm):
 	kk = pd.DataFrame(columns=kk_cols)
 
 	kk.loc[0] = [site_name, hur_id, date_time, wind_dir, wind_spd, gust_spd, ef_sca, 
-		ef0, ef1, ef2, ef3, ef4,ef5]
+		ef0, ef1, ef2, ef3, ef4, ef5]
 
 	return kk
 
@@ -1697,11 +1697,10 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 
 	# calculate wind speed, wind direction & enhanced Fujita scale at site
 	mm = calculate_wind_speed_direction(sbear_list, srange_list, lat_list, bear_list, 
-		spd_list, wmax_list, inflow_angle, cover_type, rmw, s_par, asymmetry_factor, 
-		friction_factor, gust_factor)
-
+		spd_list, wmax_list, inflow_angle, rmw, s_par, asymmetry_factor, friction_factor, 
+		gust_factor)
 	wspd_list = mm[0]
-	gust_list = mm[1]
+	gspd_list = mm[1]
 	wdir_list = mm[2]
 	ef_list   = mm[3]
 
@@ -1719,7 +1718,7 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 
 	mm = pd.DataFrame(data=list(zip(dt_list, yr_list, jd_list, lat_list, lon_list, wmax_list, 
 		bear_list, spd_list, sbear_list, srange_list, rmw_list, spar_list, wdir_list, wspd_list, 
-		gust_list, ef_list)), columns=mm_cols)
+		gspd_list, ef_list)), columns=mm_cols)
 
 	# display total elapsed time
 	if timing == True:
@@ -1762,11 +1761,11 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 
 	# initialize lists
 	snam_list = []
-	hnam_list = []
+	hid_list = []
 	dt_list = []
 	wdir_list = []
 	wspd_list = []
-	gust_list = []
+	gspd_list = []
 	ef_list = []
 	ef0_list = []
 	ef1_list = []
@@ -1792,11 +1791,11 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 		pk = get_peak_values(hur_id, site_name, mm)
 		
 		snam_list.append(pk.site_name[0])
-		hnam_list.append(pk.hur_id[0])
+		hid_list.append(pk.hur_id[0])
 		dt_list.append(pk.date_time[0])
 		wdir_list.append(pk.wind_dir[0])
 		wspd_list.append(pk.wind_spd[0])
-		gust_list.append(pk.gust_spd[0])
+		gspd_list.append(pk.gust_spd[0])
 		ef_list.append(pk.ef_sca[0])
 		ef0_list.append(pk.ef0[0])
 		ef1_list.append(pk.ef1[0])
@@ -1820,8 +1819,8 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	peak_values_cols = ['site_name', 'hur_id', 'date_time', 'wind_dir', 'wind_spd',
 		'gust_spd', "ef_sca", "ef0", "ef1", "ef2", "ef3", "ef4", "ef5"]
 
-	peak_values = pd.DataFrame(data=list(zip(snam_list, hnam_list, dt_list, wdir_list, wspd_list, 
-		gust_list, ef_list, ef0_list, ef1_list, ef2_list, ef3_list, ef4_list, ef5_list)), 
+	peak_values = pd.DataFrame(data=list(zip(snam_list, hid_list, dt_list, wdir_list, wspd_list, 
+		gspd_list, ef_list, ef0_list, ef1_list, ef2_list, ef3_list, ef4_list, ef5_list)), 
 		columns=peak_values_cols)
 
 	# output
