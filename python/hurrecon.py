@@ -1729,7 +1729,7 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 		# save modeled data to CSV file
 		modeled_file = cwd + "/site/" + hur_id + " " + site_name + ".csv"
 		mm.to_csv(modeled_file, index=False)
-		print("Saving to", modeled_file)
+		print("\rSaving to", modeled_file)
 	else:
 		# return modeled data as data frame
 		return mm
@@ -1906,6 +1906,8 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 
 		hur_tif.close()
 
+		print("Saving to", hur_tif_file)
+
 	else:
 		# return modeled values as a list of 6 arrays
 		return peak_list
@@ -2002,6 +2004,10 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 	# display total elapsed time
 	elapsed_time = format_time_difference_hms(start_time, time.time())
 	print("\r", elapsed_time, "\n", end="")
+
+	# display where results are saved
+	reg_all_dir = cwd + "/region-all/"
+	print("Saving to", reg_all_dir)
 
 
 ### SUMMARIZING FUNCTIONS #################################
