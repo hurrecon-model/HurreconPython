@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# May 2020
+# August 2020
 
 # Python version 3.7.7.
 
@@ -114,8 +114,7 @@ def format_time_difference_ms(start_time, end_time):
 
 def check_file_exists(file_name):
 	if os.path.exists(file_name) == False or os.path.isfile(file_name) == False:
-		print("\nFile not found:", file_name, "\n")
-		sys.exit()
+		sys.exit("File not found: " + file_name)
 
 # read_site_file reads a site file and returns a list containing the
 # latitude (degrees), longitude (degrees), and cover type (water=1, land=2) 
@@ -133,8 +132,7 @@ def read_site_file(site_name):
 	index = np.where(ss.site_name == site_name)[0].tolist()
    
 	if len(index) == 0:
-		print("\nSite not found\n")
-		sys.exit()
+		sys.exit("Site not found")
 
 	site_latitude = ss.latitude[index[0]]
 	site_longitude = ss.longitude[index[0]]
@@ -163,8 +161,7 @@ def read_parameter_file(hur_id, width):
 		index = np.where(pp.hur_id == "ALL")[0].tolist()
 
 	if len(index) == 0:
-		print("\nParameter file must contain an entry for ALL\n")
-		sys.exit()
+		sys.exit("Parameter file must contain an entry for ALL")
 
 	rmw = pp.rmw[index[0]]
 	s_par = pp.s_par[index[0]]
@@ -192,8 +189,7 @@ def get_fixed_model_parameters(cover_type):
 		gust_factor = 1.5
 
 	else:
-		print("\nCover type must be 1 (water) or 2 (land)\n")
-		sys.exit()
+		sys.exit("Cover type must be 1 (water) or 2 (land)")
 
 	return [asymmetry_factor, inflow_angle, friction_factor, gust_factor]
 
@@ -390,8 +386,7 @@ def read_hurricane_track_file(hur_id):
 	xx = zz.loc[zz.hur_id == hur_id]
 
 	if len(xx) == 0:
-		print("\nHurricane not in track file\n")
-		sys.exit()
+		sys.exit("Hurricane not in track file")
 
 	# create data frame
 	hur_id_list = list(xx.hur_id)
@@ -952,11 +947,11 @@ def get_peak_values(hur_id, site_name, mm):
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate values over water
-#   timing - whether to report progress
+#   console - whether to display messages in console
 #   returns a list containng 6 raster layers
 
 def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list, 
-	spd_list, width, time_step, water, timing):
+	spd_list, width, time_step, water, console):
 
 	# get number of rows
 	mm_rows = len(lat_list)
@@ -1009,9 +1004,8 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 	# get maximum range for gale winds
 	range_maximum = get_maximum_range(wmax, rmw, s_par)
 
-	# record total elasped time if timing is True
-	if timing == True:
-		start_time = time.time()
+	# record total elasped time
+	start_time = time.time()
 
 	# calculate peak wind speed & direction and gale & hurricane duration for each location
 	for i in range(0, nrows):
@@ -1068,7 +1062,7 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 								dd[nrows-i-1][j] = int(round(wdir))
 
 		# report progress
-		if timing == True:
+		if console == True:
 			x = round(i*100/nrows)
 			if x % 10 == 0:
 				print("          ", end="")
@@ -1103,7 +1097,7 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 					cc[nrows-i-1][j] = cdir
 
 	# report elapsed time
-	if timing == True:
+	if console == True:
 		elapsed_time = format_time_difference_hms(start_time, time.time())
 		print("\r", elapsed_time, "\n", end="")
 
@@ -1268,21 +1262,22 @@ def get_track_lat_lon(hur_id, fuj_min, tt, kk):
 
 ### UTILITY FUNCTIONS #####################################
 
-#' hurrecon_set_path sets the path for the current set of model runs.
-#'   hur_path - path for current model runs
-#'   no return value
+# hurrecon_set_path sets the path for the current set of model runs.
+#   hur_path - path for current model runs
+#   console - whether to display messages in console
+#   no return value
 
-def hurrecon_set_path(hur_path):
+def hurrecon_set_path(hur_path, console=True):
 	if hur_path == "":
-		print("\nNeed to enter a path\n")
-		sys.exit()
+		sys.exit("Need to enter a path")
 
 	elif os.path.exists(hur_path) == False:
-		print("\nPath does not exist\n")
-		sys.exit()
+		sys.exit("Path does not exist")
 
 	os.chdir(hur_path)
-	print("Path set to", hur_path)
+
+	if console == True:
+		print("Path set to", hur_path)
 
 # hurrecon_create_land_water creates a land-water raster file in GeoTiff 
 # format from vector boundary files in shapefile format. The land-water file
@@ -1295,9 +1290,10 @@ def hurrecon_set_path(hur_path):
 #   xmx - maximum longitude (degrees)
 #   ymn - minimum latitude (degrees)
 #   ymx - maximum latitude (degrees)
+#   console - whether to display messages in console
 #   no return value
 
-def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx):
+def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1354,8 +1350,9 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx):
 	cell_height = 111*(ymx-ymn)/nrows
 	cell_width = 111*(xmx-xmn)*math.cos(lat_avg*math.pi/180)/ncols
 
-	print("Cell height =", round(cell_height) , "kilometers")
-	print("Cell width  =", round(cell_width), "kilometers\n")
+	if console == True:
+		print("Cell height =", round(cell_height) , "kilometers")
+		print("Cell width  =", round(cell_width), "kilometers\n")
 
 # hurrecon_reformat_hurdat2 reformats a HURDAT2 file from the National 
 # Hurricane Center for use with the HURRECON model. The input file is assumed
@@ -1366,9 +1363,10 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx):
 # from HURDAT2 plus columns for standard datetime and Julian day with fraction.
 #   hurdat2_file - name of HURDAT2 file
 #   path - optional path for HURDAT2 file
+#   console - whether to display messages in console
 #   no return value
 
-def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
+def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 	# output files
 	ids_file = "hurdat2_ids.csv"
 	tracks_file = "hurdat2_tracks.csv"
@@ -1470,10 +1468,11 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 		ids_wind_peak_list.append(wind_peak)
 
 		# report progress
-		x = round(line_num*100/nlines)
-		if x % 10 == 0:
-			print("          ", end="")
-			print("\r", x, "%", end="")
+		if console == True:
+			x = round(line_num*100/nlines)
+			if x % 10 == 0:
+				print("          ", end="")
+				print("\r", x, "%", end="")
 
 	# create data frames
 	ids_cols = ['hur_id', 'name', 'positions', 'wind_peak']
@@ -1491,8 +1490,9 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 	tracks.to_csv(tracks_file, index=False)
 
 	# display number of storms
-	print("\nNumber of storms = ", len(ids))
-	print("Number of observations = ", len(tracks))
+	if console == True:
+		print("\nNumber of storms = ", len(ids))
+		print("Number of observations = ", len(tracks))
 
 # hurrecon_extract_tracks extracts hurricane ids and tracks from the two
 # files created by hurrecon_reformat_hurdat2 (hurdat2_ids.csv and 
@@ -1508,9 +1508,10 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path=""):
 #     land-water file (degrees)
 #   wind_min - minimum value of maximum sustained wind speed 
 #     (meters/second)
+#   console - whether to display messages in console
 #   no return value
 
-def hurrecon_extract_tracks(margin=0, wind_min=33):
+def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1601,10 +1602,11 @@ def hurrecon_extract_tracks(margin=0, wind_min=33):
 				tracks_wind_max_list.extend(xx.wind_max)
 
 		# report progress
-		x = round(i*100/ii_rows)
-		if x % 10 == 0:
-			print("          ", end="")
-			print("\r", x, "%", end="")
+		if console == True:
+			x = round(i*100/ii_rows)
+			if x % 10 == 0:
+				print("          ", end="")
+				print("\r", x, "%", end="")
 
 	# create data frames
 	ids_cols = ['hur_id', 'name', 'positions', 'wind_peak']
@@ -1622,8 +1624,9 @@ def hurrecon_extract_tracks(margin=0, wind_min=33):
 	tracks.to_csv(tracks_file, index=False)
 
 	# display number of storms
-	print("\nNumber of storms = ", len(ids))
-	print("Number of observations = ", len(tracks))
+	if console == True:
+		print("\nNumber of storms = ", len(ids))
+		print("Number of observations = ", len(tracks))
 
 
 ### MODELING FUNCTIONS ####################################
@@ -1633,22 +1636,20 @@ def hurrecon_extract_tracks(margin=0, wind_min=33):
 # damage for a given hurricane and site. If width is True, the radius of 
 # maximum wind (rmw) and profile exponent (s_par) for the given hurricane are 
 # used, if available.  If save is True, results are saved to a CSV file on 
-# the site subdirectory; otherwise results are returned as a data frame. 
-# If timing is True, the total elasped time is displayed.
+# the site subdirectory; otherwise results are returned as a data frame.
 #   hur_id - hurricane id
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   save - whether to save results to a CSV file
-#   timing - whether to display total elapsed time
+#   console - whether to display messages in console
 #   returns a data frame of results if save is False
 
 def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True, 
-	timing=True):
+	console=True):
 
-	# record total elapsed time if timing is True
-	if (timing == True):
-		start_time = time.time()
+	# record total elapsed time
+	start_time = time.time()
 
     # get current working directory
 	cwd = os.getcwd()
@@ -1721,7 +1722,7 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 		gspd_list, ef_list)), columns=mm_cols)
 
 	# display total elapsed time
-	if timing == True:
+	if console == True:
 		print(format_time_difference_ms(start_time, time.time()), " ms")
 
 	# output
@@ -1729,7 +1730,9 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 		# save modeled data to CSV file
 		modeled_file = cwd + "/site/" + hur_id + " " + site_name + ".csv"
 		mm.to_csv(modeled_file, index=False)
-		print("\rSaving to", modeled_file)
+	
+		if console == True:
+			print("\rSaving to", modeled_file)
 	else:
 		# return modeled data as data frame
 		return mm
@@ -1738,17 +1741,16 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 # for a given site. If width is True, the radius of maximum wind (rmw) and 
 # profile exponent (s_par) for the given hurricane are used, if available. 
 # If save is True, results are saved to a CSV file on the site-all subdirectory; 
-# otherwise results are returned as a data frame. If timing is True, the 
-# total elasped time is displayed.
+# otherwise results are returned as a data frame.
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   save - whether to save results to a CSV file
-#   timing - whether to display total elapsed time
+#   console - whether to display messages in console
 #   returns a data frame of results if save is False
 
 def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True, 
-	timing=True):
+	console=True):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -1774,9 +1776,8 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	ef4_list = []
 	ef5_list = []
 
-	# record total elasped time if timing is True
-	if timing == True:
-		start_time = time.time()
+	# record total elasped time
+	start_time = time.time()
 
 	# get peak values for each hurricane
 	for i in range(0, ii_rows):
@@ -1785,7 +1786,7 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 
 		# get modeled output
 		mm = hurrecon_model_site(hur_id, site_name, width, time_step, save=False,
-			timing=False)
+			console=False)
 
 		# get peak values
 		pk = get_peak_values(hur_id, site_name, mm)
@@ -1805,13 +1806,13 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 		ef5_list.append(pk.ef5[0])
 
 		# report progress
-		if timing == True:
+		if console == True:
 			x = round(i*100/ii_rows)
 			if x % 10 == 0:
 				print("          ", end="")
 				print("\r", x, "%", end="")
 
-	if timing == True:
+	if console == True:
 		elapsed_time = format_time_difference_hms(start_time, time.time())
 		print("\r", elapsed_time, "\n", end="")
 
@@ -1828,7 +1829,9 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 		# save modeled data to CSV file
 		site_peak_file = cwd + "/site-all/" + site_name + " Peak Values.csv"
 		peak_values.to_csv(site_peak_file, index=False)
-		print("Saving to", site_peak_file)
+	
+		if console == True:
+			print("Saving to", site_peak_file)
 	else:
 		# return modeled data as data frame
 		return peak_values
@@ -1841,17 +1844,17 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 # If no value is provided for time step, the time step is calculated. If water 
 # is False, results are calculated for land areas only. If save is True, results
 # are saved as a GeoTiff file; otherwise results are returned as a list of 
-# rasters. If timing is True, the total elasped time is displayed.
+# rasters.
 #   hur_id - hurricane id
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to caculate results over water
 #   save - whether to save results to a GeoTiff file
-#   timing - whether to display total elapsed time
+#   console - whether to display messages in console
 #   returns a list of 6 rasters if save is False
 
 def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=True, 
-	timing=True):
+	console=True):
 	
 	# get current working directory
 	cwd = os.getcwd()
@@ -1860,7 +1863,7 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 	if time_step == "":
 		time_step = get_time_step()
 
-	if timing:
+	if console == True:
 		print("Time step =", time_step, "minutes")
  
  	# read hurricane track file
@@ -1880,7 +1883,7 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 
 	# get modeled values over region
 	peak_list = get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list,
-		bear_list, spd_list, width, time_step, water, timing)
+		bear_list, spd_list, width, time_step, water, console)
 
 	# output
 	if (save == True):
@@ -1906,7 +1909,8 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 
 		hur_tif.close()
 
-		print("Saving to", hur_tif_file)
+		if console == True:
+			print("Saving to", hur_tif_file)
 
 	else:
 		# return modeled values as a list of 6 arrays
@@ -1925,9 +1929,10 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate results over water
+#   console - whether to display messages in console
 #   no return value
 
-def hurrecon_model_region_all(width=False, time_step="", water=False):
+def hurrecon_model_region_all(width=False, time_step="", water=False, console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1935,7 +1940,8 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 	if time_step == "":
 		time_step = get_time_step()
 	
-	print("Time step =", time_step, "minutes")
+	if console == True:
+		print("Time step =", time_step, "minutes")
 
 	# read ids file
 	ids_file = cwd + "/input/ids.csv"
@@ -1960,13 +1966,14 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 		hur_id = ii.hur_id[i]
 
 		# report progress
-		x = round(i*100/ii_rows)
-		print("          ", end="")
-		print("\r", x, "%", end="")
+		if console == True:
+			x = round(i*100/ii_rows)
+			print("          ", end="")
+			print("\r", x, "%", end="")
 
 		# generate & save regional results
 		peak_list = hurrecon_model_region(hur_id, width, time_step, water, 
-			save=False, timing=False)
+			save=False, console=False)
 
 		# open GeoTiff file
 		hur_tif_file = cwd + "/region-all/" + hur_id + ".tif"
@@ -2001,13 +2008,14 @@ def hurrecon_model_region_all(width=False, time_step="", water=False):
 
 	sum_tif.close()
 
-	# display total elapsed time
-	elapsed_time = format_time_difference_hms(start_time, time.time())
-	print("\r", elapsed_time, "\n", end="")
+	if console == True:
+		# display total elapsed time
+		elapsed_time = format_time_difference_hms(start_time, time.time())
+		print("\r", elapsed_time, "\n", end="")
 
-	# display where results are saved
-	reg_all_dir = cwd + "/region-all/"
-	print("Saving to", reg_all_dir)
+		# display where results are saved
+		reg_all_dir = cwd + "/region-all/"
+		print("Saving to", reg_all_dir)
 
 
 ### SUMMARIZING FUNCTIONS #################################
@@ -2177,8 +2185,7 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 		y_var = "wind_dir"
 		y_label = "Wind Direction (deg)"
 	else:
-		print("\nvar must be wind_speed, gust_speed, or wind_direction\n")
-		sys.exit()
+		sys.exit("var must be wind_speed, gust_speed, or wind_direction")
 
 	# subset by data range
 	if (start_datetime != ""):
@@ -2285,8 +2292,7 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 		y_var = "gust_spd"
 		y_label = "Gust Speed (m/s)"
 	else:
-		print("\nvar must be wind_speed or gust_speed\n")
-		sys.exit()
+		sys.exit("var must be wind_speed or gust_speed")
 
 	# adjust wind direction
 	if adjust == True:
@@ -2390,8 +2396,7 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 		y_var = "wind_dir"
 		y_label = "Wind Direction (deg)"
 	else:
-		print("\nvar must be wind_speed, gust_speed, or wind_direction\n")
-		sys.exit()
+		sys.exit("var must be wind_speed, gust_speed, or wind_direction")
 
 	# subset by year
 	yr_list = []
@@ -2611,8 +2616,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			print("No hurricane winds\n")
 
 	else:
-		print("\nvar must be wind_speed, fujita_scale, wind_direction, wind_compass, gale_duration, or hurricane_duration\n")
-		sys.exit()
+		sys.exit("var must be wind_speed, fujita_scale, wind_direction, wind_compass, gale_duration, or hurricane_duration")
 
 	# close GeoTiff file
 	hur_tif.close()
@@ -2837,8 +2841,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			print("No F5 values\n")
 
 	else:
-		print("\nvar must be efmax, ef0, ef1, ef2, ef3, ef4, or ef5\n")
-		sys.exit()
+		sys.exit("var must be efmax, ef0, ef1, ef2, ef3, ef4, or ef5")
 
 	# close GeoTiff file
 	sum_tif.close()
