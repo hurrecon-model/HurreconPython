@@ -39,6 +39,7 @@ import pandas as pd
 import datetime as dt
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors
 import rasterio as rio
 from rasterio.plot import show
 from rasterio.mask import mask
@@ -2652,7 +2653,10 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	viridis.set_under('white') 	
 
 	rainbow = plt.get_cmap('rainbow')
-	rainbow.set_under('white') 	
+	rainbow.set_under('white')
+
+	fscale = matplotlib.colors.ListedColormap(['grey', 'purple', 'blue', 'green', 'yellow', 'orange', 'red'])
+	fscale.set_under('white')
 
 	# create plot
 	if var == "fujita_scale":
@@ -2666,11 +2670,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Fujita Scale')
 			img = hur_tif.read(2)
-			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
 			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
-			show((hur_tif, 2), cmap=rainbow, vmin=0.9)
+			show((hur_tif, 2), cmap=fscale, vmin=0.9)
 			plt.clf()
 		else:
 			print("No Fujita values\n")
@@ -2820,6 +2824,9 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 	rainbow = plt.get_cmap('rainbow')
 	rainbow.set_under('white') 	
 
+	fscale = matplotlib.colors.ListedColormap(['grey', 'purple', 'blue', 'green', 'yellow', 'orange', 'red'])
+	fscale.set_under('white')
+
 	# create plot
 	if var == "fujita_scale":
 		if np.amax(hur_tif.read(2)) > 0:
@@ -2832,11 +2839,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
 			plt.title(hur_id + ' Fujita Scale')
 			img = hur_tif.read(2)
-			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
 			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
-			show((hur_tif, 2), cmap=rainbow, vmin=0.9)
+			show((hur_tif, 2), cmap=fscale, vmin=0.9)
 			plt.clf()
 		else:
 			print("No Fujita values\n")
@@ -2937,6 +2944,9 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 	rainbow = plt.get_cmap('rainbow')
 	rainbow.set_under('white') 	
 
+	fscale = matplotlib.colors.ListedColormap(['grey', 'purple', 'blue', 'green', 'yellow', 'orange', 'red'])
+	fscale.set_under('white')
+
 	# get hurricane tracks
 	if tracks == True:
 		ids_file = cwd + "/input/ids.csv"
@@ -2962,7 +2972,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Maximum Fujita Scale')
 			img = sum_tif.read(1)		
-			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
 			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
@@ -2973,7 +2983,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
 						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
-			show((sum_tif, 1), cmap=rainbow, vmin=0.9)
+			show((sum_tif, 1), cmap=fscale, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No Fujita values\n")
