@@ -32,6 +32,7 @@ and output files are stored on the following subdirectories of this directory:
 ```{r}
 hur_dir/input
 hur_dir/region
+hur_dir/region-dt
 hur_dir/region-all
 hur_dir/site
 hur_dir/site-all
@@ -114,6 +115,7 @@ hurrecon_extract_tracks
 hurrecon_model_site
 hurrecon_model_site_all
 hurrecon_model_region
+hurrecon_model_region_dt
 hurrecon_model_region_all
 
 hurrecon_summarize_land_water
@@ -124,6 +126,7 @@ hurrecon_plot_site_ts
 hurrecon_plot_site_xy
 hurrecon_plot_site_all
 hurrecon_plot_region
+hurrecon_plot_region_dt
 hurrecon_plot_region_all
 ```
 
@@ -146,13 +149,14 @@ the minimum hurricane intensity when selecting hurricane tracks.
 
 The hurrecon_model functions generate output for a single hurricane and a 
 single site (site), all hurricanes for a single site (site_all), one hurricane
-for the current geographic region (region), or all hurricanes for the
-current geographic region (region_all). If save is TRUE (default), results
-are written to the site, site-all, region, or region-all subdirectory as CSV 
-or GeoTiff files, respectively. The default time step for site results is 1 minute.
-The default time step for regional results is calculated as the time required 
-to traverse one cell in the vertical direction at 20 meters per second, rounded 
-to one of these values: 1, 2, 3, 5, 10, 15, 30, or 60 minutes.
+for the current geographic region (region), one hurricane for the current 
+geographic region at a specified datetime (region-dt), or all hurricanes for
+the current geographic region (region_all). If save is TRUE (default), results
+are written to the site, site-all, region, region-dt, or region-all subdirectory 
+as CSV or GeoTiff files, respectively. The default time step for site results is 
+1 minute. The default time step for regional results is calculated as the time 
+required to traverse one cell in the vertical direction at 20 meters per second, 
+rounded to one of these values: 1, 2, 3, 5, 10, 15, 30, or 60 minutes.
 
 The hurrecon_summarize_land_water function displays features of the current
 land-water file. The hurrecon_summarize_tracks function displays features of
@@ -163,8 +167,8 @@ The hurrecon_plot_site functions create a time series plot of wind speed, gust
 speed, or wind direction for a single hurricane (ts), a scatter plot of wind
 or gust speed as a function of wind direction (xy), or a time series plot of peak
 wind speed, gust speed, or wind direction for all hurricanes for a given site 
-(all). The hurrecon_plot_region functions create maps of regional results 
-for a single hurricane or for all hurricanes.
+(all). The hurrecon_plot_region functions create maps of regional results for a 
+single hurricane, a single hurricane at a specified datetime, or for all hurricanes.
 
 ## Examples
 
@@ -181,6 +185,7 @@ hurrecon_extract_tracks(wind_min=70)
 hurrecon_model_site("AL031935", "Miami FL")
 hurrecon_model_site_all("Miami FL")
 hurrecon_model_region("AL031935")
+hurrecon_model_region_dt("AL031935", "1935-09-03T05:27")
 hurrecon_model_region_all()
 
 hurrecon_summarize_land_water()
@@ -191,6 +196,7 @@ hurrecon_plot_site_ts("AL031935", "Miami FL")
 hurrecon_plot_site_xy("AL031935", "Miami FL")
 hurrecon_plot_site_all("Miami FL")
 hurrecon_plot_region("AL031935")
+hurrecon_plot_region_dt("AL031935", "1935-09-03T05:27")
 hurrecon_plot_region_all()
 ```
 
