@@ -122,8 +122,7 @@ hurrecon_summarize_land_water
 hurrecon_summarize_tracks
 hurrecon_summarize_site
 
-hurrecon_plot_site_ts
-hurrecon_plot_site_xy
+hurrecon_plot_site
 hurrecon_plot_site_all
 hurrecon_plot_region
 hurrecon_plot_region_dt
@@ -164,10 +163,10 @@ the current ids and tracks files. The hurrecon_summarize_site function displays
 summary values for a single hurricane and a single site.
 
 The hurrecon_plot_site functions create a time series plot of wind speed, gust
-speed, or wind direction for a single hurricane (ts), a scatter plot of wind
-or gust speed as a function of wind direction (xy), or a time series plot of peak
-wind speed, gust speed, or wind direction for all hurricanes for a given site 
-(all). The hurrecon_plot_region functions create maps of regional results for a 
+speed, or wind direction or a scatter plot of wind or gust speed as a function of
+wind direction for a single hurricane, or a time series plot of peak
+wind speed, gust speed, or wind direction for all hurricanes for a given site.
+The hurrecon_plot_region functions create maps of regional results for a 
 single hurricane, a single hurricane at a specified datetime, or for all hurricanes.
 
 ## Examples
@@ -192,8 +191,7 @@ hurrecon_summarize_land_water()
 hurrecon_summarize_tracks()
 hurrecon_summarize_site("AL031935", "Miami FL")
 
-hurrecon_plot_site_ts("AL031935", "Miami FL")
-hurrecon_plot_site_xy("AL031935", "Miami FL")
+hurrecon_plot_site("AL031935", "Miami FL")
 hurrecon_plot_site_all("Miami FL")
 hurrecon_plot_region("AL031935")
 hurrecon_plot_region_dt("AL031935", "1935-09-03T05:27")

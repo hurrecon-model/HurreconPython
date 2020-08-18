@@ -2362,18 +2362,24 @@ def hurrecon_summarize_site(hur_id, site_name):
 
 ### PLOTTING FUNCTIONS ####################################
 
-# hurrecon_plot_site_ts creates a time-series plot of wind speed, gust 
-# speed, or wind direction as a function of datetime for a given 
-# hurricane and site. Optional start and end datetimes may be specified.
+# hurrecon_plot_site creates a time-series plot of wind speed, gust 
+# speed, or wind direction or a scatter plot of wind speed or gust 
+# speed as a function of wind direction for a given hurricane and site. 
+# Optional start and end datetimes may be specified.
+# X-variables: datetime or wind_direction. Y-variables: wind_speed, 
+# gust_speed, or wind_direction.
 #   hur_id - hurricane id
 #   site_name - name of site
 #   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
 #   end_datetime - optional end datetime in format YYYY-MM-DD hh:mm
-#   var - variable to plot (wind_speed, gust_speed, or wind_direction)
+#   xvar - dependent variable
+#   yvar - independent variable
+#   adjust - whether to subtract 360 degrees from wind directions
+#      greater than 180 degrees in scatter plot
 # no return value
 
-def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='', 
-	var="wind_speed"):
+def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='', 
+	xvar="datetime", yvar="wind_speed", adjust=False):
 	
 	# register matplotlib converters
 	from pandas.plotting import register_matplotlib_converters
@@ -2406,131 +2412,38 @@ def hurrecon_plot_site_ts(hur_id, site_name, start_datetime='', end_datetime='',
 
 	mm['dt'] = dt_list
 
-	# get axis labels
-	x_var = "dt"
-	x_label = "Datetime (UTC)"
+	# x variable
+	if xvar == "datetime":
+		plot_type = "time_series"
+		x_var = "dt"
+		x_label = "Datetime (UTC)"
 
-	if var == "wind_speed":
+	elif xvar == "wind_direction":
+		plot_type = "scatter_plot"
+		x_var = "wind_dir"
+		x_label = "Wind Direction (deg)"
+
+	else:
+		sys.exit("xvar must be datetime or wind_direction")
+
+	# y variable
+	if yvar == "wind_speed":
 		y_var = "wind_spd"
 		y_label = "Wind Speed (m/s)"
-	elif var == "gust_speed":
+
+	elif yvar == "gust_speed":
 		y_var = "gust_spd"
 		y_label = "Gust Speed (m/s)"
-	elif var == "wind_direction":
+
+	elif yvar == "wind_direction":
 		y_var = "wind_dir"
 		y_label = "Wind Direction (deg)"
+
 	else:
-		sys.exit("var must be wind_speed, gust_speed, or wind_direction")
-
-	# subset by data range
-	if (start_datetime != ""):
-		sdate = start_datetime
-	else:
-		sdate = mm.dt[0]
-
-	if (end_datetime != ""):
-		edate = end_datetime
-	else:
-		edate = mm.dt[mm_rows-1]
-
-	mm_plot = mm.loc[(mm.dt >= sdate) & (mm.dt <= edate), ]
-
-	# subset by enhanced Fujita scale
-	mm_plot_efx = mm_plot.loc[(mm_plot.gust_spd < ef[0]), : ]
-	mm_plot_ef0 = mm_plot.loc[(mm_plot.gust_spd >= ef[0]) & (mm_plot.gust_spd < ef[1]), : ]
-	mm_plot_ef1 = mm_plot.loc[(mm_plot.gust_spd >= ef[1]) & (mm_plot.gust_spd < ef[2]), : ]
-	mm_plot_ef2 = mm_plot.loc[(mm_plot.gust_spd >= ef[2]) & (mm_plot.gust_spd < ef[3]), : ]
-	mm_plot_ef3 = mm_plot.loc[(mm_plot.gust_spd >= ef[3]) & (mm_plot.gust_spd < ef[4]), : ]
-	mm_plot_ef4 = mm_plot.loc[(mm_plot.gust_spd >= ef[4]) & (mm_plot.gust_spd < ef[5]), : ]
-	mm_plot_ef5 = mm_plot.loc[(mm_plot.gust_spd >= ef[5]), : ]
-
-	gust_max = max(mm.gust_spd)
-
-	plot_name = hur_id + " " + site_name
-
-	# create plot
-	plt.figure(figsize=(10,10))
-
-	plt.xlim(min(mm_plot.dt), max(mm_plot.dt))
-
-	plt.scatter(mm_plot_efx[x_var], mm_plot_efx[y_var], label="No damage", color=ef_col[6])
-	if gust_max >= ef[0]:
-		plt.scatter(mm_plot_ef0[x_var], mm_plot_ef0[y_var], label="EF0 damage", color=ef_col[0])
-	if gust_max >= ef[1]:
-		plt.scatter(mm_plot_ef1[x_var], mm_plot_ef1[y_var], label="EF1 damage", color=ef_col[1])
-	if gust_max >= ef[2]:
-		plt.scatter(mm_plot_ef2[x_var], mm_plot_ef2[y_var], label="EF2 damage", color=ef_col[2])
-	if gust_max >= ef[3]:
-		plt.scatter(mm_plot_ef3[x_var], mm_plot_ef3[y_var], label="EF3 damage", color=ef_col[3])
-	if gust_max >= ef[4]:
-		plt.scatter(mm_plot_ef4[x_var], mm_plot_ef4[y_var], label="EF4 damage", color=ef_col[4])
-	if gust_max >= ef[5]:
-		plt.scatter(mm_plot_ef5[x_var], mm_plot_ef5[y_var], label="EF5 damage", color=ef_col[5])
-
-	plt.title(plot_name, fontsize=20)
-	plt.xlabel(x_label, fontsize=18)
-	plt.ylabel(y_label, fontsize=18)
-	plt.legend(loc='upper right')
-	plt.show()
-	plt.clf()
-
-# hurrecon_plot_site_xy creates a scatter plot of wind speed or gust speed
-# as a function of wind direction for a given hurricane and site. If adjust 
-# is True, 360 degrees are substracted from wind direction values greater 
-# than 180. Optional start and end datetimes may be specified.
-#   hur_id - hurricane id
-#   site_name - name of site
-#   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
-#   end_datetime - optional end datetime in format YYYY-MM-DD hh:mm
-#   var - variable to plot (wind_speed or gust_speed)
-#   adjust - whether to subtract 360 degrees from wind direction.
-# no return value
-
-def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='', 
-	var="wind_speed", adjust=False):
-
-	# get current working directory
-	cwd = os.getcwd()
-
-	# get enhanced Fujita wind speeds & colors
-	ef = get_fujita_wind_speeds()
-	ef_col = get_fujita_colors()
-
-	# read data
-	modeled_file = cwd + "/site/" + hur_id + " " + site_name + ".csv"
-	check_file_exists(modeled_file)
-	mm = pd.read_csv(modeled_file)
-	mm_rows = len(mm)
-
-	# add datetime
-	dt_list = []
-
-	for i in range(0, mm_rows):
-		year = int(mm.date_time[i][0:4])
-		month = int(mm.date_time[i][5:7])
-		day = int(mm.date_time[i][8:10])
-		hour = int(mm.date_time[i][11:13])
-		minute = int(mm.date_time[i][14:16])
-
-		dt_list.append(dt.datetime(year, month, day, hour, minute))
-
-	mm['dt'] = dt_list
-
-	# get axis labels
-	x_var = "wind_dir"
-	x_label = "Wind Direction (deg)"
-
-	if var == "wind_speed":
-		y_var = "wind_spd"
-		y_label = "Wind Speed (m/s)"
-	elif var == "gust_speed":
-		y_var = "gust_spd"
-		y_label = "Gust Speed (m/s)"
-	else:
-		sys.exit("var must be wind_speed or gust_speed")
+		sys.exit("yvar must be wind_speed, gust_speed, or wind_direction")
 
 	# adjust wind direction
-	if adjust == True:
+	if plot_type == "scatter_plot" and adjust == True:
 		wdir_list = []
 
 		for i in range(0, mm_rows):
@@ -2543,12 +2456,13 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 		mm['wind_dir2'] = wdir_list
 		x_var = "wind_dir2"
 
-	if (start_datetime != ""):
+	# subset by data range
+	if start_datetime != "":
 		sdate = start_datetime
 	else:
 		sdate = mm.dt[0]
 
-	if (end_datetime != ""):
+	if end_datetime != "":
 		edate = end_datetime
 	else:
 		edate = mm.dt[mm_rows-1]
@@ -2570,6 +2484,9 @@ def hurrecon_plot_site_xy(hur_id, site_name, start_datetime='', end_datetime='',
 
 	# create plot
 	plt.figure(figsize=(10,10))
+
+	if (plot_type == "time_series"):
+		plt.xlim(min(mm_plot.dt), max(mm_plot.dt))
 
 	plt.scatter(mm_plot_efx[x_var], mm_plot_efx[y_var], label="No damage", color=ef_col[6])
 	if gust_max >= ef[0]:
