@@ -158,11 +158,13 @@ def read_parameter_file(hur_id, width):
 	# get rmw & s_par parameters
 	if width:
 		index = np.where(pp.hur_id == hur_id)[0].tolist()
+		if len(index) == 0:
+			sys.exit("Parameters missing for: " + hur_id)
+	
 	else:
 		index = np.where(pp.hur_id == "ALL")[0].tolist()
-
-	if len(index) == 0:
-		sys.exit("Parameter file must contain an entry for ALL")
+		if len(index) == 0:
+			sys.exit("Parameter file must contain an entry for ALL")
 
 	rmw = pp.rmw[index[0]]
 	s_par = pp.s_par[index[0]]
@@ -198,7 +200,7 @@ def get_fixed_model_parameters(cover_type):
 # assuming a maximum hurricane forward speed of 20 meters per second (1200 
 # meters per minute). Values are rounded to the nearest 1, 2, 3, 5, 10, 15, 
 # 30, or 60 minutes.
-# returns a time step
+# returns a time step in minutes
 
 def get_time_step():
 	# read land-water file
@@ -412,7 +414,8 @@ def read_hurricane_track_file(hur_id):
 # specified time step.
 #   tt - data frame of track data
 #   time_step - time step (minutes)
-# returns lists of year, Julian day, latitude, longitude, max wind speed
+# returns a list containing lists of year, Julian day, latitude, longitude, 
+# and max wind speed
 
 def interpolate_hurricane_location_max_wind(tt, time_step):
 	tt_rows = len(tt)
@@ -454,17 +457,16 @@ def interpolate_hurricane_location_max_wind(tt, time_step):
 	lon_list.append(tt.longitude[tt_rows-1])
 	wmax_list.append(tt.wind_max[tt_rows-1])
 
-	mm = [yr_list, jd_list, lat_list, lon_list, wmax_list]
-
-	return mm
+	return [yr_list, jd_list, lat_list, lon_list, wmax_list]
 
 # estimate_range uses the Pythagorean equation to estimate the range 
 # (kilometers) from one point to another based on the latitude & longitude 
-# of each point. Note: overestimates range unless on same meridian.
-#   lat1 - latitude of first point
-#   lon1 - longitude of first point
-#   lat2 - latitude of second point
-#   lon2 - longitude of second point
+# of each point. Note: overestimates range unless on both points are on
+# the same meridian.
+#   lat1 - latitude of first point (degrees)
+#   lon1 - longitude of first point (degrees)
+#   lat2 - latitude of second point (degrees)
+#   lon2 - longitude of second point (degrees)
 # returns range in kilometers
 
 def estimate_range(lat1, lon1, lat2, lon2):
@@ -481,10 +483,10 @@ def estimate_range(lat1, lon1, lat2, lon2):
 # calculate_range uses the Haversine formula to calculate the range 
 # (kilometers) from one point to another based on the latitude & longitude
 # of each point.
-#   lat1 - latitude of first point
-#   lon1 - longitude of first point
-#   lat2 - latitude of second point
-#   lon2 - longitude of second point
+#   lat1 - latitude of first point (degrees)
+#   lon1 - longitude of first point (degrees)
+#   lat2 - latitude of second point (degrees)
+#   lon2 - longitude of second point (degrees)
 # returns range in kilometers
 
 def calculate_range(lat1, lon1, lat2, lon2):
@@ -517,10 +519,10 @@ def calculate_range(lat1, lon1, lat2, lon2):
 # calculate_bearing uses the Haversine formula to calculate the bearing 
 # (degrees) from one point to another based on the latitude & longitude 
 # of each point.
-#   lat1 - latitude of first point
-#   lon1 - longitude of first point
-#   lat2 - latitude of second point
-#   lon2 - longitude of second point
+#   lat1 - latitude of first point (degrees)
+#   lon1 - longitude of first point (degrees)
+#   lat2 - latitude of second point (degrees)
+#   lon2 - longitude of second point (degrees)
 # returns bearing in degrees
 
 def calculate_bearing(lat1, lon1, lat2, lon2):
@@ -589,7 +591,7 @@ def get_maximum_wind_speed(hur_id):
 	return wmax
 
 # get_maximum_range estimates the range (kilometers) at which sustained wind
-# speeds are less than gale s(17.5 meters/second).
+# speeds are less than gale (17.5 meters/second).
 #   wmax - maximum sustained wind speed (meters/second)
 #   rmw - radius of maximum winds (kilometers)
 #   s_par - profile constant
@@ -611,7 +613,7 @@ def get_maximum_range(wmax, rmw, s_par):
 # mid-segment values.
 #   tt - data frame of track values
 #   jd_list - list of Julian day values
-# returns lists of hurricane speed & bearing
+# returns a list containing lists of hurricane speed & bearing
 
 def interpolate_hurricane_speed_bearing(tt, jd_list):
 	tt_rows = len(tt)
@@ -696,9 +698,7 @@ def interpolate_hurricane_speed_bearing(tt, jd_list):
 		if bear_list[i] > 360:
 			bear_list[i] = bear_list[i] - 360
 
-	mm = [spd_list, bear_list]
-
-	return mm
+	return [spd_list, bear_list]
 
 # calculate_site_range_bearing calculates the range (kilometers) and bearing
 # (degrees) from a site to the hurricane center.
@@ -706,27 +706,25 @@ def interpolate_hurricane_speed_bearing(tt, jd_list):
 #	lon_list - list of hurricane longitudes (degrees)
 #   site_latitude - latitude of site (degrees)
 #   site_longitude - longitude of site (degrees)
-# returns lists of site range & bearing
+# returns a list containing lists of site range & bearing
 
 def calculate_site_range_bearing(lat_list, lon_list, site_latitude, site_longitude):
-	mm_rows = len(lat_list)
+	num = len(lat_list)
 
 	site_range = [calculate_range(site_latitude, site_longitude, 
-		lat_list[i], lon_list[i]) for i in range(0, mm_rows)]
+		lat_list[i], lon_list[i]) for i in range(0, num)]
 
 	site_bear = [calculate_bearing(site_latitude, site_longitude, 
-		lat_list[i], lon_list[i]) for i in range(0, mm_rows)]
+		lat_list[i], lon_list[i]) for i in range(0, num)]
 
-	mm = [site_range, site_bear]
-
-	return mm
+	return [site_range, site_bear]
 
 # calculate_wind_direction calculates the wind direction (degrees) at the
 # specified site.
 #   hurr_lat - latitude of hurricane (degrees)
 #   site_bear - bearing from site to hurricane center (degrees)
 #   inflow_angle - cross-isobar inflow angle (degrees)
-# returns a calculated wind direction
+# returns a calculated wind direction in degrees
 
 def calculate_wind_direction (hurr_lat, site_bear, inflow_angle):
 	# northern hemisphere: tangent minus inflow angle
@@ -791,9 +789,9 @@ def calculate_wind_speed(site_bear, site_range, hur_lat, hur_bear, hur_spd,
 
 # calculate_wind_gust calculates the wind gust speed (meters/second) from 
 # the sustained wind speed (meters/second) and the gust factor.
-#   wind_spd - sustained wind speed
+#   wind_spd - sustained wind speed (meters/second)
 #   gust_factor - gust factor
-# returns wind gust speed
+# returns wind gust speed (meters/second)
 
 def calculate_wind_gust(wind_spd, gust_factor):
 	gust_spd = gust_factor * wind_spd
@@ -801,8 +799,8 @@ def calculate_wind_gust(wind_spd, gust_factor):
 	return gust_spd
 
 # calculate_enhanced_fujita_scale returns the enhanced Fujita scale value
-# based on the wind gust speed (meters/second)
-#   gust_spd - wind gust speed
+# based on the wind gust speed (meters/second).
+#   gust_spd - wind gust speed (meters/second)
 # returns the enhanced Fujita scale value
 
 def calculate_enhanced_fujita_scale(gust_spd):
@@ -840,46 +838,45 @@ def calculate_enhanced_fujita_scale(gust_spd):
 #   asymmetry_factor - asymmetry factor
 #   friction_factor - friction factor
 #   gust_factor - gust factor
-# returns lists of wind speed, gust speed, wind direction, enhanced Fujita scale
+# returns a list containing lists of wind speed, gust speed, wind direction, 
+# and enhanced Fujita scale
 
 def calculate_wind_speed_direction(sbear_list, srange_list, lat_list, bear_list,
 	spd_list, wmax_list, inflow_angle, rmw, s_par, asymmetry_factor, friction_factor, 
 	gust_factor):
 
-	mm_rows = len(sbear_list)
+	num = len(sbear_list)
 
 	# wind speed
 	wspd_list = [calculate_wind_speed(sbear_list[i], srange_list[i], lat_list[i], 
 		bear_list[i], spd_list[i], wmax_list[i], rmw, s_par, asymmetry_factor, 
-		friction_factor) for i in range(0, mm_rows)]
+		friction_factor) for i in range(0, num)]
 
 	# gust speed
-	gspd_list = [calculate_wind_gust(wspd_list[i], gust_factor) for i in range(0, mm_rows)]
+	gspd_list = [calculate_wind_gust(wspd_list[i], gust_factor) for i in range(0, num)]
 
 	# wind direction
 	wdir_list = [calculate_wind_direction(lat_list[i], sbear_list[i], inflow_angle)
-		for i in range(0, mm_rows)]
+		for i in range(0, num)]
 
 	# enhanced Fujita scale
-	ef_list = [calculate_enhanced_fujita_scale(gspd_list[i]) for i in range(0, mm_rows)]
+	ef_list = [calculate_enhanced_fujita_scale(gspd_list[i]) for i in range(0, num)]
 
-	mm = [wspd_list, gspd_list, wdir_list, ef_list]
+	return [wspd_list, gspd_list, wdir_list, ef_list]
 
-	return mm
-
-# add_standard_date_time creates a list of standar datetime values in the format
-# YYYY-MM-DDThh:mm
+# get_standard_date_time creates a list of standard datetime values in the format
+# YYYY-MM-DDThh:mm.
 #   yr_list - list of years
 #	jd_list - list of Julian days
 # returns a list of datetime values
 
-def add_standard_date_time(yr_list, jd_list):
-	mm_rows = len(yr_list)
+def get_standard_date_time(yr_list, jd_list):
+	num = len(yr_list)
 
-	mm = [calculate_standard_datetime(yr_list[i], jd_list[i])
-		for i in range(0, mm_rows)]
+	dt_list = [calculate_standard_datetime(yr_list[i], jd_list[i])
+		for i in range(0, num)]
 	
-	return mm
+	return dt_list
 
 # get_peak_values returns a data frame of peak values for a given
 # hurricane and site.
@@ -936,9 +933,10 @@ def get_peak_values(hur_id, site_name, mm):
 
 	return kk
 
-# get_regional_peak_wind calculates the peak wind speed (meters/second), enhanced 
-# Fujita scale, wind direction (degrees), cardinal wind direction, gale wind duration 
-# (minutes), and hurricane wind duration (minutes) for a given hurricane over a region.
+# get_regional_peak_wind calculates the peak wind speed (meters/second), peak 
+# enhanced Fujita scale, peak wind direction (degrees), peak cardinal wind direction,
+# gale wind duration (minutes), and hurricane wind duration (minutes) for a given 
+# hurricane over a region. Results are returned as a list of 6 raster arrays.
 #   hur_id - hurricane id
 #	lat_list - list of hurricane latitudes (degrees)
 #	lon_list - list of hurricane longitudes (degrees)
@@ -949,13 +947,13 @@ def get_peak_values(hur_id, site_name, mm):
 #   time_step - time step (minutes)
 #   water - whether to calculate values over water
 #   console - whether to display messages in console
-# returns a list containng 6 raster layers
+# returns a list containing 6 raster arrays
 
 def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list, 
 	spd_list, width, time_step, water, console):
 
-	# get number of rows
-	mm_rows = len(lat_list)
+	# get number of positions
+	num = len(lat_list)
 	
 	# read land-water file
 	cwd = os.getcwd()
@@ -1024,7 +1022,7 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 				friction_factor = friction[cover_type-1]
 				gust_factor = gust[cover_type-1]
 
-				for k in range(0, mm_rows):
+				for k in range(0, num):
 					hur_latitude  = lat_list[k]
 					hur_longitude = lon_list[k]
 
@@ -1107,7 +1105,7 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 # get_regional_datetime calculates wind speed (meters/second), enhanced 
 # Fujita scale, wind direction (degrees), and cardinal wind direction for 
 # a given hurricane over a region at a specified datetime. Results are 
-# returned in a raster brick with 4 layers.
+# returned as a list of 4 raster arrays.
 #   hur_id - hurricane id
 #   lat - hurricane latitude (degrees)
 #   lon - hurricane longitude (degrees)
@@ -1299,9 +1297,9 @@ def get_regional_summary_csv():
 	return kk
 
 # get_regional_summary_tif compiles regional results for all hurricanes.
-# Results are returned as a list of 7 rasters representing the maximum
+# Results are returned as a list of 7 raster arrays representing the maximum
 # Fujita value and the number of storms for each Fujita value.
-# returns as list of 7 rasters
+# returns a list of 7 raster arrays
 
 def get_regional_summary_tif():
 	# get current working directory
@@ -1391,9 +1389,9 @@ def get_regional_summary_tif():
 # if the maximum enhanced Fujita value exceeds a specified value.
 #   hur_id - hurricane id
 #   fuj_min - minimum enhanced Fujita value
-#   tt - data frame of track data
+#   tt - data frame of track data (all hurricanes)
 #   kk - data frame of summary data
-# returns a data frame of track data
+# returns a data frame of track data (this hurricane)
 
 def get_track_lat_lon(hur_id, fuj_min, tt, kk):
 	xx = kk.loc[kk.hur_id == hur_id, "efmax"]
@@ -1507,13 +1505,13 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 
 # hurrecon_reformat_hurdat2 reformats a HURDAT2 file from the National 
 # Hurricane Center for use with the HURRECON model. The input file is assumed
-# to be in space-delimited text format. Two output files are created on the
-# input subdirectory: hurdat2_ids.csv contains a list of hurricanes including 
-# id, name, number of positions, and peak sustained wind speed (meters/second).
+# to be in space-delimited text format. Two output files are created: 
+# hurdat2_ids.csv contains a list of hurricanes including id, name, number 
+# of positions, and peak sustained wind speed (meters/second).
 # hurdat2_tracks.csv contains full track information for each hurricane 
 # from HURDAT2 plus columns for standard datetime and Julian day with fraction.
 #   hurdat2_file - name of HURDAT2 file
-#   path - optional path for HURDAT2 file
+#   path - optional path for input & output files
 #   console - whether to display messages in console
 # no return value
 
@@ -1650,11 +1648,11 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 # hurdat2_tracks.csv). The geographic window used to select hurricanes is 
 # set by the land-water file and optionally extended by the margin parameter.
 # Selection begins by identifying all positions in the window where the hurricane
-# has "HU" (hurricane) status in HURDAT2.  If at least one such position exists,
+# has "HU" (hurricane) status in HURDAT2. If at least one such position exists,
 # the track is extended to include one position before and one position after
-# the window, if possible. If the resulting track contains at least two positions
-# and the maximum sustained wind speed equals or exceeds wind_min, the track 
-# is included.
+# the first and last HU positions, if possible. If the resulting track contains 
+# at least two positions and the maximum sustained wind speed equals or exceeds 
+# wind_min, the track is included.
 #   margin - optional extension of the geographic window set by the
 #     land-water file (degrees)
 #   wind_min - minimum value of maximum sustained wind speed 
@@ -1785,9 +1783,10 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 # hurrecon_model_site calculates wind speed (meters/second), gust speed 
 # (meters/second), wind direction (degrees), and enhanced Fujita scale wind 
 # damage for a given hurricane and site. If width is True, the radius of 
-# maximum wind (rmw) and profile exponent (s_par) for the given hurricane are 
-# used, if available.  If save is True, results are saved to a CSV file on 
-# the site subdirectory; otherwise results are returned as a data frame.
+# maximum wind (rmw) and profile exponent (s_par) for this hurricane are 
+# used; otherwise values for ALL are used. If save is True, results are 
+# saved to a CSV file on the site subdirectory; otherwise results are returned
+# as a data frame.
 #   hur_id - hurricane id
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
@@ -1856,10 +1855,10 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 	wdir_list = mm[2]
 	ef_list   = mm[3]
 
-	# add standard date & time
-	dt_list = add_standard_date_time(yr_list, jd_list)
+	# get standard date & time
+	dt_list = get_standard_date_time(yr_list, jd_list)
 
-	# add constant parameters
+	# get constant parameters
 	rmw_list = [rmw] * mm_rows
 	spar_list = [s_par] * mm_rows
 
@@ -1890,9 +1889,9 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 
 # hurrecon_model_site_all creates a table of peak values for all hurricanes
 # for a given site. If width is True, the radius of maximum wind (rmw) and 
-# profile exponent (s_par) for the given hurricane are used, if available. 
-# If save is True, results are saved to a CSV file on the site-all subdirectory; 
-# otherwise results are returned as a data frame.
+# profile exponent (s_par) for the given hurricane are used; otherwise values
+# for ALL are used. If save is True, results are saved to a CSV file on the 
+# site-all subdirectory; otherwise results are returned as a data frame.
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
@@ -1987,22 +1986,22 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 		# return modeled data as data frame
 		return peak_values
 
-# hurrecon_model_region calculates peak wind speed (meters/second), enhanced
-# Fujita scale, wind direction (degrees), cardinal wind direction, gale wind
-# duration (minutes), and hurricane wind duration (minutes) for a given 
-# hurricane over a region. If width is True, the radius of maximum wind (rmw) 
-# and profile exponent (s_par) for the given hurricane are used, if available.
-# If no value is provided for time step, the time step is calculated. If water 
-# is False, results are calculated for land areas only. If save is True, results
-# are saved as a GeoTiff file; otherwise results are returned as a list of 
-# rasters.
+# hurrecon_model_region calculates peak wind speed (meters/second), peak 
+# enhanced Fujita scale, peak wind direction (degrees), peak cardinal wind 
+# direction, gale wind duration (minutes), and hurricane wind duration 
+# (minutes) for a given hurricane over a region. If width is True, the 
+# radius of maximum wind (rmw) and profile exponent (s_par) for this hurricane
+# are used; otherwise values for ALL are used. If no value is provided for 
+# time step, the time step is calculated. If water is False, results are 
+# calculated for land areas only. If save is True, results are saved as a 
+# GeoTiff file; otherwise results are returned as a list of 6 raster arrays.
 #   hur_id - hurricane id
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to caculate results over water
 #   save - whether to save results to a GeoTiff file
 #   console - whether to display messages in console
-# returns a list of 6 rasters if save is False
+# returns a list of 6 raster arrays if save is False
 
 def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=True, 
 	console=True):
@@ -2064,16 +2063,17 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 			print("Saving to", hur_tif_file)
 
 	else:
-		# return modeled values as a list of 6 arrays
+		# return modeled values as a list of 6 raster arrays
 		return peak_list
 
 # hurrecon_model_region_dt calculates wind speed (meters/second), enhanced
 # Fujita scale, wind direction (degrees), and cardinal wind direction for a
 # given hurricane over a region at a specified datetime. If width is
 # True, the radius of maximum wind (rmw) and profile exponent (s_par) for 
-# the given hurricane are used, if available. If water is False, results
-# are calculated for land areas only. If save is True, results are saved as a 
-# GeoTiff file on the region-dt subdirectory.
+# this hurricane are used; otherwise values for ALL are used . If water is 
+# False, results are calculated for land areas only. If save is True, results
+# are saved as a GeoTiff file on the region-dt subdirectory; otherwise results
+# are returned as a list of 4 raster arrays.
 #   hur_id - hurricane id
 #   dt - datetime in the format YYYY-MM-DDThh:mm
 #   width - whether to use width parameters for the specified hurricane
@@ -2099,7 +2099,7 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
 	lat_list = mm[2]
 	lon_list = mm[3]
 	wmax_list = mm[4]
-	dt_list = add_standard_date_time(yr_list, jd_list)
+	dt_list = get_standard_date_time(yr_list, jd_list)
 	
 	# interpolate hurricane speed & bearing
 	mm = interpolate_hurricane_speed_bearing(tt, jd_list)
@@ -2149,26 +2149,30 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
 			print("Saving to", hur_tif_file)
 
 	else:
-		# return modeled values as a list of 6 arrays
+		# return modeled values as a list of 4 raster arrays
 		return datetime_list
 
 # hurrecon_model_region_all calculates peak wind speed (meters/second), 
 # enhanced Fujita scale, wind direction (degrees), cardinal wind direction, 
 # duration of gale winds (minutes), and duration of hurricane winds (minutes) 
 # over a region for all hurricanes. If width is True, the radius of maximum 
-# wind (rmw) and profile exponent (s_par) for the given hurricane are used, 
-# if available. If no value is provided for time step, the time step is 
-# calculated. If water is False, results are calculated for land areas only.
-# Results for each hurricane are saved in a GeoTiff file on the region-all 
-# subdirectory. Summary results for all hurricanes (summary.tif, summary.csv)
-# are also calculated and saved to the region-all subdirectory.
+# wind (rmw) and profile exponent (s_par) for the given hurricane are used;
+# otherwise values for ALL are used. If no value is provided for time step, 
+# the time step is calculated. If water is False, results are calculated for 
+# land areas only. Results for each hurricane are saved in a GeoTiff file on 
+# the region-all subdirectory. Summary results for all hurricanes (summary.tif,
+# summary.csv) are also calculated and saved to the region-all subdirectory.
+# If returns is True, summary values are returned.
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate results over water
 #   console - whether to display messages in console
-# no return value
+#   returns - whether to return summary values
+# returns a list containing a data frame and a list of raster arrays
 
-def hurrecon_model_region_all(width=False, time_step="", water=False, console=True):
+def hurrecon_model_region_all(width=False, time_step="", water=False, 
+	console=True, returns=False):
+	
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2253,14 +2257,18 @@ def hurrecon_model_region_all(width=False, time_step="", water=False, console=Tr
 		reg_all_dir = cwd + "/region-all/"
 		print("Saving to", reg_all_dir)
 
+	# return a list of summary results
+	if returns == True:
+		return [kk, sum_list]
 
 ### SUMMARIZING FUNCTIONS #################################
 
-# hurrecon_summarize_land_water displays features of the current land-water
-# file (land_water.tif) in the console.
-# no return value
+# hurrecon_summarize_land_water displays information about the current 
+# land-water file (land_water.tif) in the console.
+#   console - whether to display messages in console
+# returns a string containing summary information if console is False
 
-def hurrecon_summarize_land_water():
+def hurrecon_summarize_land_water(console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2289,18 +2297,24 @@ def hurrecon_summarize_land_water():
 
 	time_step = get_time_step()
 
-	print("Rows:", nrows, "  Columns:", ncols)
-	print("Latitude:", ymn, "to", ymx, "degrees")
-	print("Longitude:", xmn, "to", xmx, "degrees")
-	print("Cell height:", round(cell_height), "kilometers")
-	print("Cell width:", round(cell_width), "kilometers")
-	print("Time Step:", time_step, "minutes")
+	st = "Rows: " + str(nrows) + "  Columns: " + str(ncols) + "\n"
+	st = st + "Latitude: " + str(ymn) + " to " + str(ymx) + " degrees" + "\n"
+	st = st + "Longitude: " + str(xmn) + " to " + str(xmx) + " degrees" + "\n"
+	st = st + "Cell height: " + str(round(cell_height)) + " kilometers" + "\n"
+	st = st + "Cell width: " + str(round(cell_width)) + " kilometers" + "\n"
+	st = st + "Time Step: " + str(time_step) + " minutes" + "\n"
 
-# hurrecon_summarize_tracks displays features of the current ids file 
-# (ids.csv) in the console.
-# no return value
+	if console == True:
+		print(st)
+	else:
+		return st
 
-def hurrecon_summarize_tracks():
+# hurrecon_summarize_tracks displays information about the current ids 
+# file (ids.csv) in the console.
+#   console - whether to display messages in console
+# returns a string containing summary information if console is False
+
+def hurrecon_summarize_tracks(console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2315,18 +2329,24 @@ def hurrecon_summarize_tracks():
 	wind_peak_min = min(ii.wind_peak)
 	wind_peak_max = max(ii.wind_peak)
 
-	print("Number of storms =", ii_rows)
-	print("Number of positions =", positions_total)
-	print("Minimum peak wind =", wind_peak_min, "m/s")
-	print("Maximum peak wind =", wind_peak_max, "m/s")
+	st = "Number of storms = " + str(ii_rows) + "\n"
+	st = st + "Number of positions = " + str(positions_total) + "\n"
+	st = st + "Minimum peak wind = " + str(wind_peak_min) + " m/s" + "\n"
+	st = st + "Maximum peak wind = " + str(wind_peak_max) + " m/s" + "\n"
+
+	if console == True:
+		print(st)
+	else:
+		return st
 
 # hurrecon_summarize_site displays peak values for a given hurricane
 # and site in the console.
 #   hur_id - hurricane id
 #   site_name - name of site
-# no return value
+#   console - whether to display messages in console
+# returns a string containing summary information if console is False
 
-def hurrecon_summarize_site(hur_id, site_name):
+def hurrecon_summarize_site(hur_id, site_name, console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2340,35 +2360,39 @@ def hurrecon_summarize_site(hur_id, site_name):
 	pk = get_peak_values(hur_id, site_name, mm)
 
 	# print peak values
-	print(modeled_name)
+	st = modeled_name + "\n"
 
-	print("PEAK:", pk.date_time[0])
-	print("Wind dir:", int(round(pk.wind_dir[0])), "deg")
-	print("Wind spd:", int(round(pk.wind_spd[0])), "m/s")
-	print("Gust spd:", int(round(pk.gust_spd[0])), "m/s")
+	st = st + "PEAK: " + str(pk.date_time[0]) + "\n"
+	st = st + "Wind dir: " + str(int(round(pk.wind_dir[0]))) + " deg" + "\n"
+	st = st + "Wind spd: " + str(int(round(pk.wind_spd[0]))) + " m/s" + "\n"
+	st = st + "Gust spd: " + str(int(round(pk.gust_spd[0]))) + " m/s" + "\n"
 
 	if pk.ef0[0] > 0:
-		print("EF0:", round(pk.ef0[0], 1), "hours")
+		st = st + "EF0: " + str(round(pk.ef0[0], 1)) + " hours" + "\n"
 	if pk.ef1[0] > 0:
-		print("EF1:", round(pk.ef1[0], 1), "hours")
+		st = st + "EF1: " + str(round(pk.ef1[0], 1)) + " hours" + "\n"
 	if pk.ef2[0] > 0:
-		print("EF2:", round(pk.ef2[0], 1), "hours")
+		st = st + "EF2: " + str(round(pk.ef2[0], 1)) + " hours" + "\n"
 	if pk.ef3[0] > 0:
-		print("EF3:", round(pk.ef3[0], 1), "hours")
+		st = st + "EF3: " + str(round(pk.ef3[0], 1)) + " hours" + "\n"
 	if pk.ef4[0] > 0:
-		print("EF4:", round(pk.ef4[0], 1), "hours")
+		st = st + "EF4: " + str(round(pk.ef4[0], 1)) + " hours" + "\n"
 	if pk.ef5[0] > 0:
-		print("EF5:", round(pk.ef5[0], 1), "hours")
+		st = st + "EF5: " + str(round(pk.ef5[0], 1)) + " hours" + "\n"
 
+	if console == True:
+		print(st)
+	else:
+		return st
 
 ### PLOTTING FUNCTIONS ####################################
 
-# hurrecon_plot_site creates a time-series plot of wind speed, gust 
-# speed, or wind direction or a scatter plot of wind speed or gust 
-# speed as a function of wind direction for a given hurricane and site. 
-# Optional start and end datetimes may be specified.
-# X-variables: datetime or wind_direction. Y-variables: wind_speed, 
-# gust_speed, or wind_direction.
+# hurrecon_plot_site creates a time-series plot (wind speed, gust 
+# speed, or wind direction as a function of datetime) or a scatter 
+# plot (wind speed or gust speed as a function of wind direction) 
+# for a given hurricane and site. Optional start and end datetimes 
+# may be specified. X-variables: datetime or wind_direction. 
+# Y-variables: wind_speed, gust_speed, or wind_direction.
 #   hur_id - hurricane id
 #   site_name - name of site
 #   start_datetime - optional start datetime in format YYYY-MM-DD hh:mm
@@ -2512,11 +2536,12 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 
 # hurrecon_plot_site_all creates a time-series plot of peak values 
 # for all hurricanes for a given site. Optional start and end years
-# may be specified.
+# may be specified. Variables to plot: wind_speed, gust_speed, or
+# wind_direction.
 #   site_name - name of site
 #   start_year - optional start year
 #   end_year - optional end year
-#   var - variable to plot (wind_speed, gust_speed, or wind_direction)
+#   var - variable to plot
 # no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
@@ -2610,12 +2635,13 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 	plt.show()
 	plt.clf()
 
-# hurrecon_plot_region creates regional plots of enhanced Fujita scale, 
-# peak wind speed, wind direction, cardinal wind direction, gale wind 
-# duration, and hurricane wind duration for a given hurricane.
+# hurrecon_plot_region creates regional plots of peak enhanced Fujita
+# scale, peak wind speed, peak wind direction, peak cardinal wind direction,
+# gale wind duration, and hurricane wind duration for a given hurricane. 
+# Variables to plot: wind_speed, fujita_scale, wind_direction, wind_compass, 
+# gale_duration, or hurricane_duration.
 #   hur_id - hurricane id
-#   var - variable to plot (wind_speed, fujita_scale, wind_direction,
-#     wind_compass, gale_duration, hurricane_duration)
+#   var - variable to plot
 # no return value
 
 def hurrecon_plot_region(hur_id, var="fujita_scale"):
@@ -2905,14 +2931,15 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 			print("No wind compass\n")
 
 	else:
-		sys.exit("var must be wind_speed, fujita_scale, wind_direction, wind_compass, gale_duration, or hurricane_duration")
+		sys.exit("var must be wind_speed, fujita_scale, wind_direction, wind_compass")
 
 	# close GeoTiff file
 	hur_tif.close()
 
 # hurrecon_plot_region_all creates regional plots of maximum enhanced Fujita
 # value and number of storms for each enhanced Fujita value for all hurricanes.
-#   var - variable to plot (efmax, ef0, ef1, ef2, ef3, ef4, or ef5)
+# Variables to plot: efmax, ef0, ef1, ef2, ef3, ef4, or ef5.
+#   var - variable to plot
 #   tracks - whether to also plot hurricane tracks
 # no return value
 

@@ -14,13 +14,31 @@ Please note: both versions are currently under development and subject to change
 
 ## Getting Started
 
+Here are the basic steps for using the model. Please see below for more details.
+
+1. Download the R or Python version of the model from GitHub.
+2. Create a directory for a set of related model runs with subdirectories for input 
+and output files (as described below).
+3. Create hurricane id and track files (ids.csv, tracks.csv) for the desired geographic
+region. These can be created directly from HURDAT2 if desired.
+4. Create a parameter file (parameters.csv) with parameters for all hurricanes and
+(optionally) for particular hurricanes.
+5. Create a site file (sites.csv) with geographic coordinates for one or more study sites.
+6. Create a land-water file (land-water.tif) for the desired geographic region.
+7. Download geographic and political boundary shapefiles for the region.
+8. Run the model to create site and regional estimates. Use the plot functions to 
+view model results.
+
+## Details
+
 All user functions begin with "hurrecon". Input CSV files have a single header
 line that contains variable names (see input file examples). Model results are 
-generated for two cover types: water and land. All datetimes are assumed to be 
-UTC (GMT). The following measurement units are used throughout:
+generated for two cover types: water and land. Datetimes are assumed to be 
+UTC (GMT). Geographic coordinates are assumed to be lattitude-longitude (degrees).
+The following measurement units are used throughout:
 
 ```{r}
-latitude, longitude, bearing, direction - degrees
+bearing, direction - degrees
 distance - kilometers
 speed - meters/second
 time - minutes or hours
@@ -76,12 +94,13 @@ hurrecon_extract_tracks function to create ids.csv and tracks.csv.
 The parameters file contains model parameters (radius of maximum winds and profile
 exponent) for all hurricanes and (optionally) for individual hurricanes. Variables:
 hur_id, rmw, s_par. This file must contain at least one record (hur_id = ALL) that 
-specifies the default values of rmw and s_par.
+specifies the default values of rmw and s_par. Values typically range from 20 to 
+100 km and 1.2 to 1.5, respectively, depending on the region.
 
 The land-water file is a raster GeoTiff file that specifies the cover type 
 (water = 1, land = 2) for each cell across a region. The geographic coordinates 
-and number of rows and columns of the land-water file are used to set the geographic
-window and spatial resolution for regional modeling.
+and the number of rows and columns of the land-water file are used to set the 
+geographic window and spatial resolution for regional modeling.
 
 The boundary files are vector shapefiles that are used for creating maps of regional
 results. Files must be renamed so the first name of each file is "boundary".
@@ -91,7 +110,7 @@ Examples of input files may be found on the inst/extdata subdirectory (R) or dat
 subdirectory (Python).
 
 To run the model, create the above directories, copy the input files to their
-respective subdirectories, and source hurrecon.R (R) or hurrecon.py (Python). 
+respective subdirectories, and run hurrecon.R (R) or hurrecon.py (Python). 
 
 The R version may also be installed as an R package using the devtools package:
 
@@ -147,27 +166,25 @@ Optional parameters may be used to broaden the geographic area or adjust
 the minimum hurricane intensity when selecting hurricane tracks.
 
 The hurrecon_model functions generate output for a single hurricane and a 
-single site (site), all hurricanes for a single site (site_all), one hurricane
-for the current geographic region (region), one hurricane for the current 
-geographic region at a specified datetime (region-dt), or all hurricanes for
-the current geographic region (region_all). If save is TRUE (default), results
-are written to the site, site-all, region, region-dt, or region-all subdirectory 
-as CSV or GeoTiff files, respectively. The default time step for site results is 
-1 minute. The default time step for regional results is calculated as the time 
-required to traverse one cell in the vertical direction at 20 meters per second, 
-rounded to one of these values: 1, 2, 3, 5, 10, 15, 30, or 60 minutes.
+single site (all datetimes), all hurricanes for a single site (peak values), 
+a single hurricane for a specified geographic region (peak values or specified
+datetime), and all hurricanes for a specified geographic region (peak values).
+If save is TRUE (default), results are written to the site, site-all, region, 
+region-dt, or region-all subdirectory as CSV or GeoTiff files. The default 
+time step for site results is 1 minute. The default time step for regional 
+results is calculated as the time required to traverse one cell in the 
+vertical direction at 20 meters per second, rounded to one of these values:
+1, 2, 3, 5, 10, 15, 30, or 60 minutes.
 
-The hurrecon_summarize_land_water function displays features of the current
-land-water file. The hurrecon_summarize_tracks function displays features of
+The hurrecon_summarize_land_water function displays information about the current
+land-water file. The hurrecon_summarize_tracks function displays information about
 the current ids and tracks files. The hurrecon_summarize_site function displays
-summary values for a single hurricane and a single site.
+peak values for a single hurricane and a single site.
 
-The hurrecon_plot_site functions create a time series plot of wind speed, gust
-speed, or wind direction or a scatter plot of wind or gust speed as a function of
-wind direction for a single hurricane, or a time series plot of peak
-wind speed, gust speed, or wind direction for all hurricanes for a given site.
-The hurrecon_plot_region functions create maps of regional results for a 
-single hurricane, a single hurricane at a specified datetime, or for all hurricanes.
+The hurrecon_plot_site functions create time-series and scatter plots for a single 
+hurricane and time-series plots for all hurricanes for a given site. The 
+hurrecon_plot_region functions create maps of regional results for a single 
+hurricane and for all hurricanes.
 
 ## Examples
 
@@ -184,7 +201,7 @@ hurrecon_extract_tracks(wind_min=70)
 hurrecon_model_site("AL031935", "Miami FL")
 hurrecon_model_site_all("Miami FL")
 hurrecon_model_region("AL031935")
-hurrecon_model_region_dt("AL031935", "1935-09-03T05:27")
+hurrecon_model_region_dt("AL031935", "1935-09-03T12:00")
 hurrecon_model_region_all()
 
 hurrecon_summarize_land_water()
@@ -194,7 +211,7 @@ hurrecon_summarize_site("AL031935", "Miami FL")
 hurrecon_plot_site("AL031935", "Miami FL")
 hurrecon_plot_site_all("Miami FL")
 hurrecon_plot_region("AL031935")
-hurrecon_plot_region_dt("AL031935", "1935-09-03T05:27")
+hurrecon_plot_region_dt("AL031935", "1935-09-03T12:00")
 hurrecon_plot_region_all()
 ```
 
@@ -216,6 +233,7 @@ data directly from HURDAT2, (3) creating a land-water file with user-selected
 geographic coordinates and spatial resolution, and (4) creating plots of site and 
 regional results.
 
-The model equations for estimating wind speed and direction are unchanged from the 
-original HURRECON model and are explained in the publications above.
+The model equations for estimating wind speed and direction, including parameter values
+for inflow angle, friction factor, and wind gust factor (over land and water), are 
+unchanged from the original HURRECON model and are explained in the publications above.
 
