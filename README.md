@@ -19,13 +19,13 @@ Here are the basic steps for using the model. Please see below for more details.
 1. Download the R or Python version of the model from GitHub.
 2. Create a directory for a set of related model runs with subdirectories for input 
 and output files (as described below).
-3. Create hurricane id and track files (ids.csv, tracks.csv) for the desired geographic
-region. These can be created directly from HURDAT2 if desired.
+3. Create hurricane id and track files (ids.csv, tracks.csv, tracks_all.csv) for the 
+desired geographic region. These can be created directly from HURDAT2 if desired.
 4. Create a parameter file (parameters.csv) with parameters for all hurricanes and
 (optionally) for particular hurricanes.
 5. Create a site file (sites.csv) with geographic coordinates for one or more study sites.
-6. Create a land-water file (land-water.tif) for the desired geographic region.
-7. Download geographic and political boundary shapefiles for the region.
+6. Download geographic and political boundary shapefiles for the desired geographic region.
+7. Create a land-water file (land-water.tif) for the region.
 8. Run the model to create site and regional estimates. Use the plot functions to 
 view model results.
 
@@ -68,6 +68,7 @@ The following input files are required:
 sites.csv
 ids.csv
 tracks.csv
+tracks_all.csv
 parameters.csv
 land-water.tif
 boundary.*
@@ -79,17 +80,20 @@ The sites file contains the name, location, and cover type (water = 1, land = 2)
 of each study site. Variables: site_name, latitude, longitude, cover_type.
 
 The ids file contains the hurricane id, name, number of positions, and peak 
-sustained wind speed for each hurricane. Variables: hur_id, name, positions,
-wind_peak.
+sustained wind speed for each hurricane for a given set of model runs. 
+Variables: hur_id, name, positions, wind_peak.
 
-The tracks file contains location and maximum wind speed for each location of
-each hurricane. Variables: hur_id, name, date_time, jd, status, latitude,
-longitude, wind_max.
+The tracks file contains location and maximum wind speed for each position of
+each hurricane for a given set of model runs. Variables: hur_id, name, date_time, 
+jd, status, latitude, longitude, wind_max.
 
-The ids and tracks files may be created directly from HURDAT2. Use the 
-hurrecon_reformat_hurdat2 function to reformat the HURDAT2 file as hurdat2_ids.csv
-and hurdat2_tracks.csv, copy these files to the input directory, and use the
-hurrecon_extract_tracks function to create ids.csv and tracks.csv.
+The tracks_all file contains all positions of each hurricane and is used for
+plotting hurricane tracks. Variables: hur_id, date_time, latitude, longitude.
+
+The ids, tracks, and tracks_all files may be created directly from HURDAT2. 
+Use the hurrecon_reformat_hurdat2 function to reformat the HURDAT2 file as 
+hurdat2_ids.csv and hurdat2_tracks.csv, copy these files to the input directory,
+and use the hurrecon_extract_tracks function to create ids.csv and tracks.csv.
 
 The parameters file contains model parameters (radius of maximum winds and profile
 exponent) for all hurricanes and (optionally) for individual hurricanes. Variables:

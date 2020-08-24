@@ -924,7 +924,7 @@ def get_peak_values(hur_id, site_name, mm):
 
 	# create data fame of peak values
 	kk_cols = ['site_name', 'hur_id', 'date_time', 'wind_dir', 'wind_spd',
-		'gust_spd', "ef_sca", "ef0", "ef1", "ef2", "ef3", "ef4", "ef5"]
+		'gust_spd', 'ef_sca', 'ef0', 'ef1', 'ef2', 'ef3', 'ef4', 'ef5']
 
 	kk = pd.DataFrame(columns=kk_cols)
 
@@ -1385,6 +1385,53 @@ def get_regional_summary_tif():
 
 	return[efm, ef0, ef1, ef2, ef3, ef4, ef5]
 
+# get_values_at_datetime returns a data frame of modeled values for the
+# specified datetime. The data frame includes hurricane latitude (degrees)
+# longitude (degrees), maximum sustained wind speed (meters/second), forward 
+# speed (meters/second), and bearing (degrees).
+#   hur_id - hurricane id
+#   tt - data frame of track data
+#   dt - datetime in the format YYYY-MM-DDThh:mm
+# returns a data frame of modeled values
+
+def get_values_at_datetime(hur_id, tt, dt):
+	# interpolate hurricane location & max wind speed
+	mm = interpolate_hurricane_location_max_wind(tt, time_step=1)	
+	yr_list = mm[0]
+	jd_list = mm[1]
+	lat_list = mm[2]
+	lon_list = mm[3]
+	wmax_list = mm[4]
+	dt_list = get_standard_date_time(yr_list, jd_list)
+	
+	# abort if no match
+	if dt not in dt_list:
+		sys.exit("Datetime not found")
+
+	# interpolate hurricane speed & bearing
+	mm = interpolate_hurricane_speed_bearing(tt, jd_list)
+	spd_list = mm[0]
+	bear_list = mm[1]
+
+	# get values for specified datetime
+	index = dt_list.index(dt)
+  
+	# extract values
+	lat = lat_list[index]
+	lon = lon_list[index]
+	wmax = wmax_list[index]
+	spd = spd_list[index]
+	bear = bear_list[index]
+
+	# create data fame of peak values
+	pp_cols = ['lat', 'lon', 'wmax', 'spd', 'bear']
+
+	pp = pd.DataFrame(columns=pp_cols)
+
+	pp.loc[0] = [lat, lon, wmax, spd, bear]
+
+	return pp
+
 # get_track_lat_lon returns a data frame of track data for the specified hurricane
 # if the maximum enhanced Fujita value exceeds a specified value.
 #   hur_id - hurricane id
@@ -1518,14 +1565,14 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 	# output files
 	ids_file = "hurdat2_ids.csv"
-	tracks_file = "hurdat2_tracks.csv"
+	track_file = "hurdat2_tracks.csv"
 
 	if path != "":
 		if path[len(path)-1] != "/":
 			path = path + "/"
 		hurdat2_file = path + hurdat2_file
 		ids_file = path + ids_file
-		tracks_file = path + tracks_file
+		track_file = path + track_file
 
 	# read hurdat2 file
 	file_in = open(hurdat2_file, 'r') 
@@ -1636,7 +1683,7 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 
 	# save to file
 	ids.to_csv(ids_file, index=False)
-	tracks.to_csv(tracks_file, index=False)
+	tracks.to_csv(track_file, index=False)
 
 	# display number of storms
 	if console == True:
@@ -1652,7 +1699,9 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 # the track is extended to include one position before and one position after
 # the first and last HU positions, if possible. If the resulting track contains 
 # at least two positions and the maximum sustained wind speed equals or exceeds 
-# wind_min, the track is included.
+# wind_min, the track is included. For included storms, summary data are
+# written to ids.csv, track data are written to tracks.csv, and track data for
+# all positions are written to tracks_all.csv.
 #   margin - optional extension of the geographic window set by the
 #     land-water file (degrees)
 #   wind_min - minimum value of maximum sustained wind speed 
@@ -1666,7 +1715,8 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 
 	# output files
 	ids_file = cwd + "/input/ids.csv"
-	tracks_file = cwd + "/input/tracks.csv"
+	track_file = cwd + "/input/tracks.csv"
+	track_all_file = cwd + "/input/tracks_all.csv"
 
 	# read hurdat2 ids file
 	hurdat2_ids_file = cwd + "/input/hurdat2_ids.csv"
@@ -1675,9 +1725,9 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 	ii_rows = len(ii)
 
 	# read hurdat2 tracks file
-	hurdat2_tracks_file = cwd + "/input/hurdat2_tracks.csv"
-	check_file_exists(hurdat2_tracks_file)
-	tt = pd.read_csv(hurdat2_tracks_file)
+	hurdat2_track_file = cwd + "/input/hurdat2_tracks.csv"
+	check_file_exists(hurdat2_track_file)
+	tt = pd.read_csv(hurdat2_track_file)
 	tt_rows = len(tt)
 
 	# read land-water file
@@ -1707,6 +1757,11 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 	tracks_longitude_list = []
 	tracks_wind_max_list = []
 
+	tracks_all_hur_id_list = []
+	tracks_all_date_time_list = []
+	tracks_all_latitude_list = []
+	tracks_all_longitude_list = []
+
 	# process files
 	for i in range(0, ii_rows):
 		# get hurricane id & name
@@ -1714,6 +1769,7 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 		name = ii.name[i]
 
 		index = np.where((tt.hur_id == hur_id) & (tt.latitude >= lat_min) & (tt.latitude <= lat_max) & (tt.longitude >= lon_min) & (tt.longitude <= lon_max) & (tt.status == "HU"))[0].tolist()
+		index_all = np.where(tt.hur_id == hur_id)[0].tolist()
 
 		# get start & end position
 		if len(index) > 0:
@@ -1734,6 +1790,8 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 			positions = len(xx)
 			wind_peak = max(xx.wind_max)
 		
+			zz = tt.loc[index_all, ]
+
 			# store id & tracks if at least 2 positions & exceeds minimum wind speed
 			if positions > 1 and wind_peak >= wind_min:
 				ids_hur_id_list.append(hur_id)
@@ -1749,6 +1807,11 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 				tracks_latitude_list.extend(xx.latitude)
 				tracks_longitude_list.extend(xx.longitude)
 				tracks_wind_max_list.extend(xx.wind_max)
+
+				tracks_all_hur_id_list.extend(zz.hur_id)
+				tracks_all_date_time_list.extend(zz.date_time)
+				tracks_all_latitude_list.extend(zz.latitude)
+				tracks_all_longitude_list.extend(zz.longitude)
 
 		# report progress
 		if console == True:
@@ -1768,9 +1831,15 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 		tracks_jd_list, tracks_status_list, tracks_latitude_list, tracks_longitude_list, tracks_wind_max_list)), 
 		columns=tracks_cols)
 
+	tracks_all_cols = ['hur_id', 'date_time', 'latitude', 'longitude']
+
+	tracks_all = pd.DataFrame(data=list(zip(tracks_all_hur_id_list, tracks_all_date_time_list, 
+		tracks_all_latitude_list, tracks_all_longitude_list)), columns=tracks_all_cols)
+
 	# save to file
 	ids.to_csv(ids_file, index=False)
-	tracks.to_csv(tracks_file, index=False)
+	tracks.to_csv(track_file, index=False)
+	tracks_all.to_csv(track_all_file, index=False)
 
 	# display number of storms
 	if console == True:
@@ -2091,36 +2160,12 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
  	# read hurricane track file
 	tt = read_hurricane_track_file(hur_id)
 
-	# interpolate hurricane location & max wind speed
-	mm = interpolate_hurricane_location_max_wind(tt, time_step=1)
-	
-	yr_list = mm[0]
-	jd_list = mm[1]
-	lat_list = mm[2]
-	lon_list = mm[3]
-	wmax_list = mm[4]
-	dt_list = get_standard_date_time(yr_list, jd_list)
-	
-	# interpolate hurricane speed & bearing
-	mm = interpolate_hurricane_speed_bearing(tt, jd_list)
-	spd_list = mm[0]
-	bear_list = mm[1]
-
 	# get values for specified datetime
-	if dt not in dt_list:
-		sys.exit("Datetime not found")
-
-	index = dt_list.index(dt)
-  
-	lat = lat_list[index]
-	lon = lon_list[index]
-	wmax = wmax_list[index]
-	spd = spd_list[index]
-	bear = bear_list[index]
+	pp = get_values_at_datetime(hur_id, tt, dt)
 
 	# get modeled values over region
-	datetime_list = get_regional_datetime(hur_id, lat, lon, wmax, bear, spd, 
-		width, water, console)
+	datetime_list = get_regional_datetime(hur_id, pp.lat[0], pp.lon[0], pp.wmax[0], 
+		pp.bear[0], pp.spd[0], width, water, console)
 
 	# output
 	if (save == True):
@@ -2642,9 +2687,10 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 # gale_duration, or hurricane_duration.
 #   hur_id - hurricane id
 #   var - variable to plot
+#   positions - whether to plot original positions
 # no return value
 
-def hurrecon_plot_region(hur_id, var="fujita_scale"):
+def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2666,13 +2712,13 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 	shapefile.close()
 
 	# get hurricane track
-	track_file = cwd + "/input/tracks.csv"
-	check_file_exists(track_file)
-	tt = pd.read_csv(track_file)
-	index = np.where(tt.hur_id == hur_id)[0].tolist()
+	track_all_file = cwd + "/input/tracks_all.csv"
+	check_file_exists(track_all_file)
+	tt_all = pd.read_csv(track_all_file)
+	index = np.where(tt_all.hur_id == hur_id)[0].tolist()
 
-	lat_list = [tt.latitude[index[i]] for i in range(0, len(index))]
-	lon_list = [tt.longitude[index[i]] for i in range(0, len(index))]
+	lat_list = [tt_all.latitude[index[i]] for i in range(0, len(index))]
+	lon_list = [tt_all.longitude[index[i]] for i in range(0, len(index))]
 
 	# get colormaps with white background
 	viridis = plt.get_cmap('viridis')
@@ -2693,7 +2739,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Fujita Scale')
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=fscale, vmin=0.9)
@@ -2713,7 +2761,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Wind Speed (m/s)')
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2731,7 +2781,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Wind Direction (deg)')
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2749,7 +2801,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Wind Direction')
 			img = hur_tif.read(4)		
 			plt.imshow(img, cmap=rainbow, vmin=0.9)
@@ -2769,7 +2823,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Gale Winds (min)')
 			img = hur_tif.read(5)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2787,7 +2843,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Hurricane Winds (min)')
 			img = hur_tif.read(6)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
@@ -2810,9 +2868,10 @@ def hurrecon_plot_region(hur_id, var="fujita_scale"):
 #   hur_id - hurricane id
 #   dt - datetime in the format YYYY-MM-DDThh:mm
 #   var - variable to plot
+#   positions - whether to plot original positions
 # no return value
 
-def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
+def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2834,14 +2893,18 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 	features = [feature["geometry"] for feature in shapefile]
 	shapefile.close()
 
-	# get hurricane track
-	track_file = cwd + "/input/tracks.csv"
-	check_file_exists(track_file)
-	tt = pd.read_csv(track_file)
-	index = np.where(tt.hur_id == hur_id)[0].tolist()
+	# get current location
+	tt = read_hurricane_track_file(hur_id)
+	pp = get_values_at_datetime(hur_id, tt, dt)
 
-	lat_list = [tt.latitude[index[i]] for i in range(0, len(index))]
-	lon_list = [tt.longitude[index[i]] for i in range(0, len(index))]
+	# get hurricane track
+	track_all_file = cwd + "/input/tracks_all.csv"
+	check_file_exists(track_all_file)
+	tt_all = pd.read_csv(track_all_file)
+	index = np.where(tt_all.hur_id == hur_id)[0].tolist()
+
+	lat_list = [tt_all.latitude[index[i]] for i in range(0, len(index))]
+	lon_list = [tt_all.longitude[index[i]] for i in range(0, len(index))]
 
 	# get colormaps with white background
 	viridis = plt.get_cmap('viridis')
@@ -2862,8 +2925,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
-			plt.title(hur_id + ' Fujita Scale')
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
+			plt.title(hur_id + ' Fujita Scale ' + dt)
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2882,8 +2948,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
-			plt.title(hur_id + ' Wind Speed (m/s)')
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
+			plt.title(hur_id + ' Wind Speed (m/s) ' + dt)
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
 			plt.colorbar(shrink=0.3)
@@ -2900,8 +2969,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
-			plt.title(hur_id + ' Wind Direction (deg)')
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
+			plt.title(hur_id + ' Wind Direction (deg) ' + dt)
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=viridis, vmin=0.9)
 			plt.colorbar(shrink=0.3)
@@ -2918,8 +2990,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='grey', linewidth=0.8)
-			plt.title(hur_id + ' Wind Direction')
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
+			plt.title(hur_id + ' Wind Direction ' + dt)
 			img = hur_tif.read(4)		
 			plt.imshow(img, cmap=rainbow, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2980,9 +3055,9 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 		check_file_exists(ids_file)
 		ii = pd.read_csv(ids_file)
 
-		track_file = cwd + "/input/tracks.csv"
-		check_file_exists(track_file)
-		tt = pd.read_csv(track_file)
+		track_all_file = cwd + "/input/tracks_all.csv"
+		check_file_exists(track_all_file)
+		tt = pd.read_csv(track_all_file)
 
 		summary_file = cwd + "/region-all/summary.csv"
 		check_file_exists(summary_file)
@@ -3009,7 +3084,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 0
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 1), cmap=fscale, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3033,7 +3108,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 0
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 2), cmap=viridis, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3057,7 +3132,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 1
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 3), cmap=viridis, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3081,7 +3156,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 2
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 4), cmap=viridis, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3105,7 +3180,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 3
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 5), cmap=viridis, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3129,7 +3204,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 4
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 6), cmap=viridis, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3153,7 +3228,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 					fuj_min = 5
 					xx = get_track_lat_lon(hur_id, fuj_min, tt, kk)
 					if len(xx) > 0:
-						plt.plot(xx.longitude, xx.latitude, color='grey', linewidth=0.8)
+						plt.plot(xx.longitude, xx.latitude, color='brown', linewidth=0.8)
 			show((sum_tif, 7), cmap=viridis, vmin=0.9)
 			plt.clf()	
 		else:
