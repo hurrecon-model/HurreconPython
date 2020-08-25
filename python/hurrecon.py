@@ -2727,7 +2727,19 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 	rainbow = plt.get_cmap('rainbow')
 	rainbow.set_under('white')
 
-	fscale = matplotlib.colors.ListedColormap(['grey', 'purple', 'blue', 'green', 'yellow', 'orange', 'red'])
+	ef_col = get_fujita_colors()
+  
+	ff_all_vals = [0, 1, 2, 3, 4, 5, 6, 7]
+	ff_all_labs = ['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5']
+	ff_all_cols = [ef_col[6], ef_col[0], ef_col[1], ef_col[2], ef_col[3], ef_col[4], ef_col[5]]
+
+	ff_max = hur_tif.read(2).max()
+	ff_cols = []
+
+	for i in range(0, ff_max):
+		ff_cols.append(ff_all_cols[i])
+
+	fscale = matplotlib.colors.ListedColormap(ff_cols)
 	fscale.set_under('white')
 
 	# create plot
@@ -2746,8 +2758,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
-			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
-			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
+			cbar.set_ticks(ff_all_vals)
+			cbar.set_ticklabels(ff_all_labs)
 			show((hur_tif, 2), cmap=fscale, vmin=0.9)
 			plt.clf()
 		else:
@@ -2913,7 +2925,19 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 	rainbow = plt.get_cmap('rainbow')
 	rainbow.set_under('white') 	
 
-	fscale = matplotlib.colors.ListedColormap(['grey', 'purple', 'blue', 'green', 'yellow', 'orange', 'red'])
+	ef_col = get_fujita_colors()
+  
+	ff_all_vals = [0, 1, 2, 3, 4, 5, 6, 7]
+	ff_all_labs = ['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5']
+	ff_all_cols = [ef_col[6], ef_col[0], ef_col[1], ef_col[2], ef_col[3], ef_col[4], ef_col[5]]
+
+	ff_max = hur_tif.read(2).max()
+	ff_cols = []
+
+	for i in range(0, ff_max):
+		ff_cols.append(ff_all_cols[i])
+
+	fscale = matplotlib.colors.ListedColormap(ff_cols)
 	fscale.set_under('white')
 
 	# create plot
@@ -2933,8 +2957,8 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
-			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
-			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
+			cbar.set_ticks(ff_all_vals)
+			cbar.set_ticklabels(ff_all_labs)
 			show((hur_tif, 2), cmap=fscale, vmin=0.9)
 			plt.clf()
 		else:
@@ -3046,7 +3070,19 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 	rainbow = plt.get_cmap('rainbow')
 	rainbow.set_under('white') 	
 
-	fscale = matplotlib.colors.ListedColormap(['grey', 'purple', 'blue', 'green', 'yellow', 'orange', 'red'])
+	ef_col = get_fujita_colors()
+  
+	ff_all_vals = [0, 1, 2, 3, 4, 5, 6, 7]
+	ff_all_labs = ['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5']
+	ff_all_cols = [ef_col[6], ef_col[0], ef_col[1], ef_col[2], ef_col[3], ef_col[4], ef_col[5]]
+
+	ff_max = sum_tif.read(1).max()
+	ff_cols = []
+
+	for i in range(0, ff_max):
+		ff_cols.append(ff_all_cols[i])
+
+	fscale = matplotlib.colors.ListedColormap(ff_cols)
 	fscale.set_under('white')
 
 	# get hurricane tracks
@@ -3076,8 +3112,8 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			img = sum_tif.read(1)		
 			plt.imshow(img, cmap=fscale, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
-			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7])
-			cbar.set_ticklabels(['', 'None', 'EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'])
+			cbar.set_ticks(ff_all_vals)
+			cbar.set_ticklabels(ff_all_labs)
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
