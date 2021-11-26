@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# October 2021
+# November 2021
 
 # Python version 3.7.11
 
@@ -36,7 +36,7 @@
 import os
 
 # set PROJ_LIB as Python environmental variable
-# os.environ['PROJ_LIB'] = "C:/Anaconda3/envs/hf/Library/share/proj"
+os.environ['PROJ_LIB'] = "C:/Anaconda3/envs/hf/Library/share/proj"
 
 import sys
 import math
@@ -2680,9 +2680,12 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 #   hur_id - hurricane id
 #   var - variable to plot
 #   positions - whether to plot original positions
+#   colormap - color palette
 # no return value
 
-def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
+def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False, 
+	colormap="default"):
+	
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2734,6 +2737,20 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 	fscale = matplotlib.colors.ListedColormap(ff_cols)
 	fscale.set_under('white')
 
+	# color palettes
+	if colormap == "default":
+		if var == "fujita_scale":
+			cmap = fscale
+
+		elif var == "wind_compass":
+			cmap = rainbow
+
+		else:
+			cmap = viridis
+	else:
+		cmap = plt.get_cmap(colormap)
+		cmap.set_under('white')
+
 	# create plot
 	if var == "fujita_scale":
 		if np.amax(hur_tif.read(2)) > 0:
@@ -2748,11 +2765,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Fujita Scale')
 			img = hur_tif.read(2)
-			plt.imshow(img, cmap=fscale, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks(ff_all_vals)
 			cbar.set_ticklabels(ff_all_labs)
-			show((hur_tif, 2), cmap=fscale, vmin=0.9)
+			show((hur_tif, 2), cmap=cmap, vmin=0.9)
 			plt.clf()
 		else:
 			print("No Fujita values\n")
@@ -2770,9 +2787,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Wind Speed (m/s)')
 			img = hur_tif.read(1)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
-			show((hur_tif, 1), cmap=viridis, vmin=0.9)
+			show((hur_tif, 1), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No wind speed\n")
@@ -2790,9 +2807,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Wind Direction (deg)')
 			img = hur_tif.read(3)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
-			show((hur_tif, 3), cmap=viridis, vmin=0.9)
+			show((hur_tif, 3), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No wind direction\n")
@@ -2810,11 +2827,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Wind Direction')
 			img = hur_tif.read(4)		
-			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
 			cbar.set_ticklabels(['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
-			show((hur_tif, 4), cmap=rainbow, vmin=0.9)
+			show((hur_tif, 4), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No wind compass\n")
@@ -2832,9 +2849,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Gale Winds (min)')
 			img = hur_tif.read(5)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
-			show((hur_tif, 5), cmap=viridis, vmin=0.9)
+			show((hur_tif, 5), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No gale winds\n")
@@ -2852,9 +2869,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(hur_id + ' Hurricane Winds (min)')
 			img = hur_tif.read(6)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
-			show((hur_tif, 6), cmap=viridis, vmin=0.9)
+			show((hur_tif, 6), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No hurricane winds\n")
@@ -2873,9 +2890,12 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False):
 #   dt - datetime in the format YYYY-MM-DDThh:mm
 #   var - variable to plot
 #   positions - whether to plot original positions
+#   colormap - color palette
 # no return value
 
-def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
+def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
+	colormap="default"):
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2932,6 +2952,20 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 	fscale = matplotlib.colors.ListedColormap(ff_cols)
 	fscale.set_under('white')
 
+	# color palettes
+	if colormap == "default":
+		if var == "fujita_scale":
+			cmap = fscale
+
+		elif var == "wind_compass":
+			cmap = rainbow
+
+		else:
+			cmap = viridis
+	else:
+		cmap = plt.get_cmap(colormap)
+		cmap.set_under('white')
+
 	# create plot
 	if var == "fujita_scale":
 		if np.amax(hur_tif.read(2)) > 0:
@@ -2947,11 +2981,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
 			plt.title(hur_id + ' Fujita Scale ' + dt)
 			img = hur_tif.read(2)
-			plt.imshow(img, cmap=fscale, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks(ff_all_vals)
 			cbar.set_ticklabels(ff_all_labs)
-			show((hur_tif, 2), cmap=fscale, vmin=0.9)
+			show((hur_tif, 2), cmap=cmap, vmin=0.9)
 			plt.clf()
 		else:
 			print("No Fujita values\n")
@@ -2970,9 +3004,9 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
 			plt.title(hur_id + ' Wind Speed (m/s) ' + dt)
 			img = hur_tif.read(1)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
-			show((hur_tif, 1), cmap=viridis, vmin=0.9)
+			show((hur_tif, 1), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No wind speed\n")
@@ -2991,9 +3025,9 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
 			plt.title(hur_id + ' Wind Direction (deg) ' + dt)
 			img = hur_tif.read(3)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
-			show((hur_tif, 3), cmap=viridis, vmin=0.9)
+			show((hur_tif, 3), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No wind direction\n")
@@ -3012,11 +3046,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
 			plt.title(hur_id + ' Wind Direction ' + dt)
 			img = hur_tif.read(4)		
-			plt.imshow(img, cmap=rainbow, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
 			cbar.set_ticklabels(['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
-			show((hur_tif, 4), cmap=rainbow, vmin=0.9)
+			show((hur_tif, 4), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No wind compass\n")
@@ -3032,9 +3066,10 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False):
 # Variables to plot: efmax, ef0, ef1, ef2, ef3, ef4, or ef5.
 #   var - variable to plot
 #   tracks - whether to also plot hurricane tracks
+#   colormap - color palette
 # no return value
 
-def hurrecon_plot_region_all(var="efmax", tracks=False):
+def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -3059,9 +3094,6 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 	viridis = plt.get_cmap('viridis')
 	viridis.set_under('white') 	
 
-	rainbow = plt.get_cmap('rainbow')
-	rainbow.set_under('white') 	
-
 	ef_col = get_fujita_colors()
   
 	ff_all_vals = [0, 1, 2, 3, 4, 5, 6, 7]
@@ -3076,6 +3108,17 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 
 	fscale = matplotlib.colors.ListedColormap(ff_cols)
 	fscale.set_under('white')
+
+	# color palettes
+	if colormap == "default":
+		if var == "efm":
+			cmap = fscale
+
+		else:
+			cmap = viridis
+	else:
+		cmap = plt.get_cmap(colormap)
+		cmap.set_under('white')
 
 	# get hurricane tracks
 	if tracks == True:
@@ -3102,7 +3145,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Maximum Fujita Scale')
 			img = sum_tif.read(1)		
-			plt.imshow(img, cmap=fscale, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks(ff_all_vals)
 			cbar.set_ticklabels(ff_all_labs)
@@ -3115,7 +3158,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 1), cmap=fscale, vmin=0.9)
+			show((sum_tif, 1), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No Fujita values\n")
@@ -3130,7 +3173,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 0 Storms')
 			img = sum_tif.read(2)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
 			if tracks == True:
 				for i in range(0, len(ii)):
@@ -3141,7 +3184,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 2), cmap=viridis, vmin=0.9)
+			show((sum_tif, 2), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No F0 values\n")
@@ -3156,7 +3199,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 1 Storms')
 			img = sum_tif.read(3)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
 			if tracks == True:
 				for i in range(0, len(ii)):
@@ -3167,7 +3210,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 3), cmap=viridis, vmin=0.9)
+			show((sum_tif, 3), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No F1 values\n")
@@ -3182,7 +3225,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 2 Storms')
 			img = sum_tif.read(4)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
 			if tracks == True:
 				for i in range(0, len(ii)):
@@ -3193,7 +3236,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 4), cmap=viridis, vmin=0.9)
+			show((sum_tif, 4), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No F2 values\n")
@@ -3208,7 +3251,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 3 Storms')
 			img = sum_tif.read(5)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
 			if tracks == True:
 				for i in range(0, len(ii)):
@@ -3219,7 +3262,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 5), cmap=viridis, vmin=0.9)
+			show((sum_tif, 5), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No F3 values\n")
@@ -3234,7 +3277,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 4 Storms')
 			img = sum_tif.read(6)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
 			if tracks == True:
 				for i in range(0, len(ii)):
@@ -3245,7 +3288,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 6), cmap=viridis, vmin=0.9)
+			show((sum_tif, 6), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No F4 values\n")
@@ -3260,7 +3303,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
 			plt.title('Fujita Scale 5 Storms')
 			img = sum_tif.read(7)		
-			plt.imshow(img, cmap=viridis, vmin=0.9)
+			plt.imshow(img, cmap=cmap, vmin=0.9)
 			plt.colorbar(shrink=0.3)
 			if tracks == True:
 				for i in range(0, len(ii)):
@@ -3271,7 +3314,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False):
 						x_coord = list(xx.longitude)
 						y_coord = list(xx.latitude)
 						plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
-			show((sum_tif, 7), cmap=viridis, vmin=0.9)
+			show((sum_tif, 7), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
 			print("No F5 values\n")
