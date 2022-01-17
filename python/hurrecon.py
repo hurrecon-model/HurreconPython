@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# November 2021
+# January 2022
 
 # Python version 3.7.11
 
@@ -2763,12 +2763,13 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Fujita Scale')
+			plt.title(hur_id + ' Peak Fujita Scale')
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks(ff_all_vals)
 			cbar.set_ticklabels(ff_all_labs)
+			cbar.ax.set_title("   EF Scale")
 			show((hur_tif, 2), cmap=cmap, vmin=0.9)
 			plt.clf()
 		else:
@@ -2785,10 +2786,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Wind Speed (m/s)')
+			plt.title(hur_id + ' Peak Wind Speed')
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   m/sec")
 			show((hur_tif, 1), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -2805,10 +2807,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Wind Direction (deg)')
+			plt.title(hur_id + ' Peak Wind Direction')
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   degrees")
 			show((hur_tif, 3), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -2825,12 +2828,13 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Wind Direction')
+			plt.title(hur_id + ' Peak Wind Direction')
 			img = hur_tif.read(4)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
 			cbar.set_ticklabels(['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
+			cbar.ax.set_title("   direction")
 			show((hur_tif, 4), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -2847,10 +2851,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Gale Winds (min)')
+			plt.title(hur_id + ' Gale Winds')
 			img = hur_tif.read(5)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   minutes")
 			show((hur_tif, 5), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -2867,10 +2872,11 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Hurricane Winds (min)')
+			plt.title(hur_id + ' Hurricane Winds')
 			img = hur_tif.read(6)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   minutes")
 			show((hur_tif, 6), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -2985,6 +2991,7 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks(ff_all_vals)
 			cbar.set_ticklabels(ff_all_labs)
+			cbar.ax.set_title("   EF Scale")
 			show((hur_tif, 2), cmap=cmap, vmin=0.9)
 			plt.clf()
 		else:
@@ -3002,10 +3009,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
-			plt.title(hur_id + ' Wind Speed (m/s) ' + dt)
+			plt.title(hur_id + ' Wind Speed ' + dt)
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   m/sec")
 			show((hur_tif, 1), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3023,10 +3031,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
-			plt.title(hur_id + ' Wind Direction (deg) ' + dt)
+			plt.title(hur_id + ' Wind Direction ' + dt)
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar =  plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   degrees")
 			show((hur_tif, 3), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3050,6 +3059,7 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks([0, 1, 2, 3, 4, 5, 6, 7, 8])
 			cbar.set_ticklabels(['', 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'])
+			cbar.ax.set_title("   direction")
 			show((hur_tif, 4), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
@@ -3143,12 +3153,13 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Maximum Fujita Scale')
+			plt.title('Peak Fujita Scale')
 			img = sum_tif.read(1)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
 			cbar.set_ticks(ff_all_vals)
 			cbar.set_ticklabels(ff_all_labs)
+			cbar.ax.set_title("   EF Scale")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
@@ -3171,10 +3182,11 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 0 Storms')
+			plt.title('Fujita Scale 0')
 			img = sum_tif.read(2)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   storms")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
@@ -3197,10 +3209,11 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 1 Storms')
+			plt.title('Fujita Scale 1')
 			img = sum_tif.read(3)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   storms")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
@@ -3223,10 +3236,11 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 2 Storms')
+			plt.title('Fujita Scale 2')
 			img = sum_tif.read(4)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   storms")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
@@ -3249,10 +3263,11 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 3 Storms')
+			plt.title('Fujita Scale 3')
 			img = sum_tif.read(5)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   storms")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
@@ -3275,10 +3290,11 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 4 Storms')
+			plt.title('Fujita Scale 4')
 			img = sum_tif.read(6)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   storms")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
@@ -3301,10 +3317,11 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 5 Storms')
+			plt.title('Fujita Scale 5')
 			img = sum_tif.read(7)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
-			plt.colorbar(shrink=0.3)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   storms")
 			if tracks == True:
 				for i in range(0, len(ii)):
 					hur_id = ii.loc[i, "hur_id"]
