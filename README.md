@@ -21,6 +21,7 @@ Here are the basic steps for using the model. Please see below for more details.
 and output files (as described below).
 3. Create a site file (sites.csv) with geographic coordinates for one or more study sites.
 4. Download geographic and political boundary shapefiles for the desired geographic region.
+Rename these files so the first name of each file is "boundaries".
 5. Create a land-water file (land-water.tif) for the region.
 6. Create a parameter file (parameters.csv) with parameters for all hurricanes and
 (optionally) for particular hurricanes.
@@ -66,7 +67,7 @@ The following input files are required:
 
 ```{r}
 sites.csv
-boundary.*
+boundaries.*
 land-water.tif
 parameters.csv
 input_tracks.csv
@@ -78,8 +79,7 @@ The sites file contains the name, location, and cover type (water = 1, land = 2)
 of each study site. Variables: site_name, latitude, longitude, cover_type.
 
 The boundary files are vector shapefiles that are used for creating maps of regional
-results. Files must be renamed so the first name of each file is "boundary".
-These files are located on the vector subdirectory.
+results. These files are located on the vector subdirectory.
 
 The land-water file is a raster GeoTiff file that specifies the cover type 
 (water = 1, land = 2) for each cell across a region. The geographic coordinates 
