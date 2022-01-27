@@ -125,6 +125,15 @@ def check_file_exists(file_name):
 	if os.path.exists(file_name) == False or os.path.isfile(file_name) == False:
 		sys.exit("File not found: " + file_name)
 
+# check_legend_location checks if the specified legend location is valid.
+#   loc - legend location
+# returns True or False
+
+def check_legend_location(loc):
+    locations = ["upper left", "upper right", "lower left", "lower right"]
+
+    return loc in locations
+
 # read_site_file reads a site file and returns a list containing the
 # latitude (degrees), longitude (degrees), and cover type (water=1, land=2) 
 # for the specified site.
@@ -1709,10 +1718,10 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 	track_file = cwd + "/input/tracks.csv"
 	track_all_file = cwd + "/input/tracks_all.csv"
 
-	# read hurdat2 tracks file
-	hurdat2_track_file = cwd + "/input/hurdat2_tracks.csv"
-	check_file_exists(hurdat2_track_file)
-	tt = pd.read_csv(hurdat2_track_file)
+	# read input tracks file
+	input_track_file = cwd + "/input/input_tracks.csv"
+	check_file_exists(input_track_file)
+	tt = pd.read_csv(input_track_file)
 	tt_rows = len(tt)
 
 	# get ids
@@ -2438,10 +2447,11 @@ def hurrecon_summarize_site(hur_id, site_name, console=True):
 #   yvar - independent variable
 #   adjust - whether to subtract 360 degrees from wind directions
 #      greater than 180 degrees in scatter plot
+#   legend_loc - legend location
 # no return value
 
 def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='', 
-	xvar="datetime", yvar="wind_speed", adjust=False):
+	xvar="datetime", yvar="wind_speed", adjust=False, legend_loc="upper right"):
 	
 	# register matplotlib converters
 	from pandas.plotting import register_matplotlib_converters
@@ -2453,6 +2463,10 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 	# get enhanced Fujita wind speeds & colors
 	ef = get_fujita_wind_speeds()
 	ef_col = get_fujita_colors()
+
+	# check legend location
+	if (not(check_legend_location(legend_loc))):
+		legend_loc = "upper right"
 
 	# read data
 	modeled_file = cwd + "/site/" + hur_id + " " + site_name + ".csv"
@@ -2567,7 +2581,7 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 	plt.title(plot_name, fontsize=20)
 	plt.xlabel(x_label, fontsize=18)
 	plt.ylabel(y_label, fontsize=18)
-	plt.legend(loc='upper right')
+	plt.legend(loc=legend_loc)
 	plt.show()
 	plt.clf()
 
@@ -2579,10 +2593,11 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 #   start_year - optional start year
 #   end_year - optional end year
 #   var - variable to plot
+#   legend_loc - legend location
 # no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
-	var="wind_speed"):
+	var="wind_speed", legend_loc="upper right"):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2590,6 +2605,10 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 	# get enhanced Fujita wind speeds & colors
 	ef = get_fujita_wind_speeds()
 	ef_col = get_fujita_colors()
+
+	# check legend location
+	if (not(check_legend_location(legend_loc))):
+		legend_loc = "upper right"
 
 	# read data
 	peak_file = cwd + "/site-all/" + site_name + " Peak Values.csv"
@@ -2668,7 +2687,7 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 	plt.title(plot_name, fontsize=20)
 	plt.xlabel(x_label, fontsize=18)
 	plt.ylabel(y_label, fontsize=18)
-	plt.legend(loc='lower left')
+	plt.legend(loc=legend_loc)
 	plt.show()
 	plt.clf()
 
