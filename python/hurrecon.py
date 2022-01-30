@@ -1706,10 +1706,11 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 #     land-water file (degrees)
 #   wind_min - minimum value of maximum sustained wind speed 
 #     (meters/second)
+#   status - whether to limit search to storms with hurricane status
 #   console - whether to display messages in console
 # no return value
 
-def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
+def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True):
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1769,7 +1770,11 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, console=True):
 		hur_id = ii_hur_id[i]
 		name = ii_name[i]
 
-		index = np.where((tt.hur_id == hur_id) & (tt.latitude >= lat_min) & (tt.latitude <= lat_max) & (tt.longitude >= lon_min) & (tt.longitude <= lon_max) & (tt.wind_max >= 33))[0].tolist()
+		if status == True:
+			index = np.where((tt.hur_id == hur_id) & (tt.latitude >= lat_min) & (tt.latitude <= lat_max) & (tt.longitude >= lon_min) & (tt.longitude <= lon_max) & (tt.wind_max >= 33) & (tt.status == "HU"))[0].tolist()
+		else:
+			index = np.where((tt.hur_id == hur_id) & (tt.latitude >= lat_min) & (tt.latitude <= lat_max) & (tt.longitude >= lon_min) & (tt.longitude <= lon_max) & (tt.wind_max >= 33))[0].tolist()
+
 		index_all = np.where(tt.hur_id == hur_id)[0].tolist()
 
 		# get start & end position
@@ -2448,10 +2453,12 @@ def hurrecon_summarize_site(hur_id, site_name, console=True):
 #   adjust - whether to subtract 360 degrees from wind directions
 #      greater than 180 degrees in scatter plot
 #   legend_loc - legend location
+#   main_title - optional title
 # no return value
 
 def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='', 
-	xvar="datetime", yvar="wind_speed", adjust=False, legend_loc="upper right"):
+	xvar="datetime", yvar="wind_speed", adjust=False, legend_loc="upper right",
+	main_title=""):
 	
 	# register matplotlib converters
 	from pandas.plotting import register_matplotlib_converters
@@ -2556,12 +2563,14 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 
 	gust_max = max(mm.gust_spd)
 
-	plot_name = hur_id + " " + site_name
+	# get title
+	if main_title == "":
+		main_title = hur_id + " " + site_name
 
 	# create plot
 	plt.figure(figsize=(10,10))
 
-	if (plot_type == "time_series"):
+	if plot_type == "time_series":
 		plt.xlim(min(mm_plot.dt), max(mm_plot.dt))
 
 	plt.scatter(mm_plot_efx[x_var], mm_plot_efx[y_var], label="No damage", color=ef_col[6])
@@ -2578,7 +2587,7 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 	if gust_max >= ef[5]:
 		plt.scatter(mm_plot_ef5[x_var], mm_plot_ef5[y_var], label="EF5 damage", color=ef_col[5])
 
-	plt.title(plot_name, fontsize=20)
+	plt.title(main_title, fontsize=20)
 	plt.xlabel(x_label, fontsize=18)
 	plt.ylabel(y_label, fontsize=18)
 	plt.legend(loc=legend_loc)
@@ -2594,10 +2603,11 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 #   end_year - optional end year
 #   var - variable to plot
 #   legend_loc - legend location
+#   main_title - optional title
 # no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
-	var="wind_speed", legend_loc="upper right"):
+	var="wind_speed", legend_loc="upper right", main_title=""):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2663,7 +2673,8 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 
 	gust_max = max(kk.gust_spd)
 
-	plot_name = site_name
+	if main_title == "":
+		main_title = site_name
 
 	# create plot
 	plt.figure(figsize=(10,10))
@@ -2684,12 +2695,104 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 	if gust_max >= ef[5]:
 		plt.scatter(kk_plot_ef5[x_var], kk_plot_ef5[y_var], label="EF5 damage", s=70, color=ef_col[5])
 
-	plt.title(plot_name, fontsize=20)
+	plt.title(main_title, fontsize=20)
 	plt.xlabel(x_label, fontsize=18)
 	plt.ylabel(y_label, fontsize=18)
 	plt.legend(loc=legend_loc)
 	plt.show()
 	plt.clf()
+
+# hurrecon_plot_tracks creates a regional plot of the land-water file
+# and selected hurricane tracks.
+#   select - show all positions (all), only positions used as
+#     model input (model), or none (none)
+#   main_title - optional title
+#   colormap - color palette
+# no return value
+
+def hurrecon_plot_tracks(select="all", main_title="", colormap="default"):
+	# get current working directory
+	cwd = os.getcwd()
+
+	# read land-water file
+	land_water_file = cwd + "/input/land_water.tif"
+	check_file_exists(land_water_file)
+	land_water = rio.open(land_water_file)
+
+	lat_min = land_water.bounds.bottom
+	lat_max = land_water.bounds.top
+	lon_min = land_water.bounds.left
+	lon_max = land_water.bounds.right
+
+	# read boundaries file
+	boundaries_file = cwd + "/vector/boundaries.shp"
+	shapefile = fiona.open(boundaries_file, "r")
+	features = [feature["geometry"] for feature in shapefile]
+	shapefile.close()
+
+	# get hurricane tracks
+	ids_file = cwd + "/input/ids.csv"
+	check_file_exists(ids_file)
+	ii = pd.read_csv(ids_file)
+
+	track_file = cwd + "/input/tracks.csv"
+	check_file_exists(track_file)
+	tt = pd.read_csv(track_file)
+
+	track_all_file = cwd + "/input/tracks_all.csv"
+	check_file_exists(track_all_file)
+	tt_all = pd.read_csv(track_all_file)
+	
+	# color palettes
+	if colormap == "default":
+		cmap = plt.get_cmap('Greens')
+	
+	else:
+		cmap = plt.get_cmap(colormap)
+
+	# get title
+	if main_title == "":
+		main_title = "Hurricane Tracks"
+
+	# create plot
+	vals = [0, 1, 2]
+	labs = ["", "water", "land"]
+
+	fig, ax = plt.subplots(figsize=(15, 15))
+	plt.axis([lon_min, lon_max, lat_min, lat_max])
+	plt.xlabel('Longitude (degrees)')
+	plt.ylabel('Latitude (degrees)')
+	patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+	ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+	plt.title(main_title)
+	img = land_water.read(1)		
+	plt.imshow(img, cmap=cmap, vmin=0.9)
+	cbar = plt.colorbar(cmap=cmap, shrink=0.3)
+	cbar.set_ticks(vals)
+	cbar.set_ticklabels(labs)
+	cbar.ax.set_title("   cover")
+
+	if select == "all":
+		for i in range(0, len(ii)):
+			hur_id = ii.loc[i, "hur_id"]
+			xx = tt_all.loc[tt_all.hur_id == hur_id, ]
+			x_coord = list(xx.longitude)
+			y_coord = list(xx.latitude)
+			plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
+
+	elif select == "model":
+		for i in range(0, len(ii)):
+			hur_id = ii.loc[i, "hur_id"]
+			xx = tt.loc[tt.hur_id == hur_id, ]
+			x_coord = list(xx.longitude)
+			y_coord = list(xx.latitude)
+			plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
+
+	show((land_water, 1), cmap=cmap, vmin=0.9)
+	plt.clf()
+
+	# close land-water file
+	land_water.close()
 
 # hurrecon_plot_region creates regional plots of peak enhanced Fujita
 # scale, peak wind speed, peak wind direction, peak cardinal wind direction,
@@ -2699,11 +2802,12 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 #   hur_id - hurricane id
 #   var - variable to plot
 #   positions - whether to plot original positions
+#   main_title - optional title
 #   colormap - color palette
 # no return value
 
 def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False, 
-	colormap="default"):
+	main_title="", colormap="default"):
 	
 	# get current working directory
 	cwd = os.getcwd()
@@ -2773,6 +2877,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 	# create plot
 	if var == "fujita_scale":
 		if np.amax(hur_tif.read(2)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Peak Fujita Scale"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2782,7 +2888,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Peak Fujita Scale')
+			plt.title(main_title)
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2796,6 +2902,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 
 	elif var == "wind_speed":
 		if np.amax(hur_tif.read(1)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Peak Wind Speed"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2805,7 +2913,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Peak Wind Speed')
+			plt.title(main_title)
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2817,6 +2925,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 
 	elif var == "wind_direction":
 		if np.amax(hur_tif.read(3)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Peak Wind Direction"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2826,7 +2936,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Peak Wind Direction')
+			plt.title(main_title)
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2838,6 +2948,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 
 	elif var == "wind_compass":
 		if np.amax(hur_tif.read(4)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Peak Wind Direction"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2847,7 +2959,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Peak Wind Direction')
+			plt.title(main_title)
 			img = hur_tif.read(4)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2861,6 +2973,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 
 	elif var == "gale_duration":
 		if np.amax(hur_tif.read(5)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Gale Winds"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2870,7 +2984,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Gale Winds')
+			plt.title(main_title)
 			img = hur_tif.read(5)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2882,6 +2996,8 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 	
 	elif var == "hurricane_duration":
 		if np.amax(hur_tif.read(6)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Hurricane Winds"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2891,7 +3007,7 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(hur_id + ' Hurricane Winds')
+			plt.title(main_title)
 			img = hur_tif.read(6)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -2915,11 +3031,12 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 #   dt - datetime in the format YYYY-MM-DDThh:mm
 #   var - variable to plot
 #   positions - whether to plot original positions
+#   main_title - optional title
 #   colormap - color palette
 # no return value
 
 def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
-	colormap="default"):
+	main_title="", colormap="default"):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2994,6 +3111,8 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 	# create plot
 	if var == "fujita_scale":
 		if np.amax(hur_tif.read(2)) > 0:
+			if main_title == "":
+				main_title = hur_id + ' Fujita Scale ' + dt
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -3004,7 +3123,7 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
-			plt.title(hur_id + ' Fujita Scale ' + dt)
+			plt.title(main_title)
 			img = hur_tif.read(2)
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3018,6 +3137,8 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 
 	elif var == "wind_speed":
 		if np.amax(hur_tif.read(1)) > 0:
+			if main_title == "":
+				main_title = hur_id + ' Wind Speed ' + dt
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -3028,7 +3149,7 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
-			plt.title(hur_id + ' Wind Speed ' + dt)
+			plt.title(main_title)
 			img = hur_tif.read(1)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3040,6 +3161,8 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 
 	elif var == "wind_direction":
 		if np.amax(hur_tif.read(3)) > 0:
+			if main_title == "":
+				main_title = hur_id + ' Wind Direction ' + dt
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -3050,7 +3173,7 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
-			plt.title(hur_id + ' Wind Direction ' + dt)
+			plt.title(main_title)
 			img = hur_tif.read(3)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar =  plt.colorbar(shrink=0.3)
@@ -3062,6 +3185,8 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 
 	elif var == "wind_compass":
 		if np.amax(hur_tif.read(4)) > 0:
+			if main_title == "":
+				main_title = hur_id + ' Wind Direction ' + dt
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -3072,7 +3197,7 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.plot(pp.lon[0], pp.lat[0], 'o', color='brown', markersize=6)
-			plt.title(hur_id + ' Wind Direction ' + dt)
+			plt.title(main_title)
 			img = hur_tif.read(4)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3095,10 +3220,13 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 # Variables to plot: efmax, ef0, ef1, ef2, ef3, ef4, or ef5.
 #   var - variable to plot
 #   tracks - whether to also plot hurricane tracks
+#   main_title - optional title
 #   colormap - color palette
 # no return value
 
-def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
+def hurrecon_plot_region_all(var="efmax", tracks=False, main_title="",
+	colormap="default"):
+	
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -3166,13 +3294,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 	# create plot
 	if var == "efmax":
 		if np.amax(sum_tif.read(1)) > 0:
+			if main_title == "":
+				main_title = "Peak Fujita Scale"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Peak Fujita Scale')
+			plt.title(main_title)
 			img = sum_tif.read(1)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3195,13 +3325,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 
 	elif var == "ef0":
 		if np.amax(sum_tif.read(2)) > 0:
+			if main_title == "":
+				main_title = "Fujita Scale 0"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 0')
+			plt.title(main_title)
 			img = sum_tif.read(2)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3222,13 +3354,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 
 	elif var == "ef1":
 		if np.amax(sum_tif.read(3)) > 0:
+			if main_title == "":
+				main_title = "Fujita Scale 1"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 1')
+			plt.title(main_title)
 			img = sum_tif.read(3)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3249,13 +3383,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 
 	elif var == "ef2":
 		if np.amax(sum_tif.read(4)) > 0:
+			if main_title == "":
+				main_title = "Fujita Scale 2"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 2')
+			plt.title(main_title)
 			img = sum_tif.read(4)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3276,13 +3412,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 
 	elif var == "ef3":
 		if np.amax(sum_tif.read(5)) > 0:
+			if main_title == "":
+				main_title = "Fujita Scale 3"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 3')
+			plt.title(main_title)
 			img = sum_tif.read(5)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3303,13 +3441,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 	
 	elif var == "ef4":
 		if np.amax(sum_tif.read(6)) > 0:
+			if main_title == "":
+				main_title = "Fujita Scale 4"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 4')
+			plt.title(main_title)
 			img = sum_tif.read(6)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
@@ -3330,13 +3470,15 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, colormap="default"):
 
 	elif var == "ef5":
 		if np.amax(sum_tif.read(7)) > 0:
+			if main_title == "":
+				main_title = "Fujita Scale 5"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
 			plt.ylabel('Latitude (degrees)')
 			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
 			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.title('Fujita Scale 5')
+			plt.title(main_title)
 			img = sum_tif.read(7)		
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)

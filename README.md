@@ -142,6 +142,7 @@ hurrecon_summarize_site
 
 hurrecon_plot_site
 hurrecon_plot_site_all
+hurrecon_plot_tracks
 hurrecon_plot_region
 hurrecon_plot_region_dt
 hurrecon_plot_region_all
@@ -182,8 +183,9 @@ peak values for a single hurricane and a single site.
 
 The hurrecon_plot_site functions create time-series and scatter plots for a single 
 hurricane and time-series plots for all hurricanes for a given site. The 
-hurrecon_plot_region functions create maps of regional results for a single 
-hurricane and for all hurricanes.
+hurrecon_plot_tracks function creates a map of the land-water file with selected 
+hurricane tracks. The hurrecon_plot_region functions create maps of regional results 
+for a single hurricane and for all hurricanes.
 
 ## Examples
 
@@ -210,6 +212,7 @@ hurrecon_summarize_site("AL031935", "Miami FL")
 
 hurrecon_plot_site("AL031935", "Miami FL")
 hurrecon_plot_site_all("Miami FL")
+hurrecon_plot_tracks()
 hurrecon_plot_region("AL031935")
 hurrecon_plot_region_dt("AL031935", "1935-09-03T12:00")
 hurrecon_plot_region_all()
