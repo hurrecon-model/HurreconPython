@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# January 2022
+# February 2022
 
 # Python version 3.7.11
 
@@ -2706,11 +2706,15 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 # and selected hurricane tracks.
 #   select - show all positions (all), only positions used as
 #     model input (model), or none (none)
+#   wind_min - the minimum value of maximum sustained wind speed 
+#    (meters/second)
 #   main_title - optional title
 #   colormap - color palette
 # no return value
 
-def hurrecon_plot_tracks(select="all", main_title="", colormap="default"):
+def hurrecon_plot_tracks(select="all", wind_min=33, main_title="", 
+	colormap="default"):
+	
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2752,7 +2756,7 @@ def hurrecon_plot_tracks(select="all", main_title="", colormap="default"):
 
 	# get title
 	if main_title == "":
-		main_title = "Hurricane Tracks"
+		main_title = "Hurricane Tracks (" + str(wind_min) + " m/s)"
 
 	# create plot
 	vals = [0, 1, 2]
@@ -2774,19 +2778,21 @@ def hurrecon_plot_tracks(select="all", main_title="", colormap="default"):
 
 	if select == "all":
 		for i in range(0, len(ii)):
-			hur_id = ii.loc[i, "hur_id"]
-			xx = tt_all.loc[tt_all.hur_id == hur_id, ]
-			x_coord = list(xx.longitude)
-			y_coord = list(xx.latitude)
-			plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
+			if ii.wind_peak[i] >= wind_min:
+				hur_id = ii.loc[i, "hur_id"]
+				xx = tt_all.loc[tt_all.hur_id == hur_id, ]
+				x_coord = list(xx.longitude)
+				y_coord = list(xx.latitude)
+				plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
 
 	elif select == "model":
 		for i in range(0, len(ii)):
-			hur_id = ii.loc[i, "hur_id"]
-			xx = tt.loc[tt.hur_id == hur_id, ]
-			x_coord = list(xx.longitude)
-			y_coord = list(xx.latitude)
-			plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
+			if ii.wind_peak[i] >= wind_min:
+				hur_id = ii.loc[i, "hur_id"]
+				xx = tt.loc[tt.hur_id == hur_id, ]
+				x_coord = list(xx.longitude)
+				y_coord = list(xx.latitude)
+				plt.plot(x_coord, y_coord, color='grey', linewidth=0.8)
 
 	show((land_water, 1), cmap=cmap, vmin=0.9)
 	plt.clf()
