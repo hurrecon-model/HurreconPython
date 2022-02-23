@@ -950,10 +950,10 @@ def get_peak_values(hur_id, site_name, mm):
 
 	return kk
 
-# get_regional_peak_wind calculates the peak wind speed (meters/second), peak 
-# enhanced Fujita scale, peak wind direction (degrees), peak cardinal wind direction,
-# gale wind duration (minutes), and hurricane wind duration (minutes) for a given 
-# hurricane over a region. Results are returned as a list of 6 raster arrays.
+# get_regional_peak_wind calculates peak values for wind speed (meters/second), 
+# enhanced Fujita scale, wind direction (degrees), cardinal wind direction (1-8),
+# and duration of EF0, EF1, EF2, EF3, EF4, and EF5 winds (minutes) for a given 
+# hurricane over a region. Results are returned in a list.
 #   hur_id - hurricane id
 #	lat_list - list of hurricane latitudes (degrees)
 #	lon_list - list of hurricane longitudes (degrees)
@@ -964,7 +964,7 @@ def get_peak_values(hur_id, site_name, mm):
 #   time_step - time step (minutes)
 #   water - whether to calculate values over water
 #   console - whether to display messages in console
-# returns a list containing 6 raster arrays
+# returns a list containing 10 raster arrays
 
 def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list, 
 	spd_list, width, time_step, water, console):
@@ -995,8 +995,13 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 	ff = np.zeros((nrows, ncols), dtype=np.int16)   # enhanced Fujita scale
 	dd = np.zeros((nrows, ncols), dtype=np.int16)   # wind direction (degrees)
 	cc = np.zeros((nrows, ncols), dtype=np.int16)   # cardinal wind direction (1-8)
-	gg = np.zeros((nrows, ncols), dtype=np.int16)   # duration of gale force winds (minutes)
-	hh = np.zeros((nrows, ncols), dtype=np.int16)   # duration of hurricane winds (minutes)
+	f0 = np.zeros((nrows, ncols), dtype=np.int16)   # duration of EF0 winds (minutes)
+	f1 = np.zeros((nrows, ncols), dtype=np.int16)   # duration of EF1 winds (minutes)
+	f2 = np.zeros((nrows, ncols), dtype=np.int16)   # duration of EF2 winds (minutes)
+	f3 = np.zeros((nrows, ncols), dtype=np.int16)   # duration of EF3 winds (minutes)
+	f4 = np.zeros((nrows, ncols), dtype=np.int16)   # duration of EF4 winds (minutes)
+	f5 = np.zeros((nrows, ncols), dtype=np.int16)   # duration of EF5 winds (minutes)
+
 	xx = np.zeros((nrows, ncols), dtype=np.float64) # floating point wind speed (m/s)
 
 	# create array from raster
@@ -1060,12 +1065,23 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 
 						# update values if gale or higher
 						if wspd >= 17.5:
-							# duration of gale force winds (minutes)
-							gg[nrows-i-1][j] = gg[nrows-i-1][j] + time_step
+							# enhanced Fujita scale
+							gspd = calculate_wind_gust(wspd, gust_factor)
+							fsca = calculate_enhanced_fujita_scale(gspd)
 
-							# duration of hurricane force winds (minutes)
-							if wspd >= 33:
-								hh[nrows-i-1][j] = hh[nrows-i-1][j] + time_step
+                            # update duration (minutes)
+							if fsca >= 0:
+								f0[nrows-i-1][j] = f0[nrows-i-1][j] + time_step
+							if fsca >= 1:
+								f1[nrows-i-1][j] = f1[nrows-i-1][j] + time_step
+							if fsca >= 2:
+								f2[nrows-i-1][j] = f2[nrows-i-1][j] + time_step
+							if fsca >= 3:
+								f3[nrows-i-1][j] = f3[nrows-i-1][j] + time_step
+							if fsca >= 4:
+								f4[nrows-i-1][j] = f4[nrows-i-1][j] + time_step
+							if fsca >= 5:
+								f5[nrows-i-1][j] = f5[nrows-i-1][j] + time_step
 
 							# peak wind speed
 							if xx[nrows-i-1][j] < wspd:							
@@ -1117,7 +1133,7 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 		elapsed_time = format_time_difference_hms(start_time, time.time())
 		print("\r", elapsed_time, "\n", end="")
 
-	return [ss, ff, dd, cc, gg, hh]
+	return [ss, ff, dd, cc, f0, f1, f2, f3, f4, f5]
 
 # get_regional_datetime calculates wind speed (meters/second), enhanced 
 # Fujita scale, wind direction (degrees), and cardinal wind direction for 
@@ -2063,20 +2079,19 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 
 # hurrecon_model_region calculates peak wind speed (meters/second), peak 
 # enhanced Fujita scale, peak wind direction (degrees), peak cardinal wind 
-# direction, gale wind duration (minutes), and hurricane wind duration 
-# (minutes) for a given hurricane over a region. If width is True, the 
-# radius of maximum wind (rmw) and scaling parameter (s_par) for this hurricane
-# are used; otherwise values for ALL are used. If no value is provided for 
-# time step, the time step is calculated. If water is False, results are 
-# calculated for land areas only. If save is True, results are saved as a 
-# GeoTiff file; otherwise results are returned as a list of 6 raster arrays.
+# direction, and duration of EF0, EF1, EF2, EF3, EF4, and EF5 winds (minutes)
+# for a given hurricane over a region. If width is TRUE, the radius of maximum 
+# wind (rmw) and scaling parameter (s_par) for the given hurricane are used; 
+# otherwise values for ALL are used. If time_step is NULL, the time step is 
+# calculated. If water is FALSE, results are calculated for land areas only. 
+# If save is TRUE, results are saved as a GeoTiff file on the region subdirectory.
 #   hur_id - hurricane id
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to caculate results over water
 #   save - whether to save results to a GeoTiff file
 #   console - whether to display messages in console
-# returns a list of 6 raster arrays if save is False
+# returns a list of 10 raster arrays if save is False
 
 def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=True, 
 	console=True):
@@ -2121,7 +2136,7 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 		hur_tif_file = cwd + "/region/" + hur_id + ".tif"
 
 		profile = land_water.profile
-		profile.update(dtype='int16', nodata=-9999, count=6)
+		profile.update(dtype='int16', nodata=-9999, count=10)
         
 		hur_tif = rio.open(hur_tif_file, 'w', **profile)
 
@@ -2131,6 +2146,10 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 		hur_tif.write(peak_list[3], 4)
 		hur_tif.write(peak_list[4], 5)
 		hur_tif.write(peak_list[5], 6)
+		hur_tif.write(peak_list[6], 7)
+		hur_tif.write(peak_list[7], 8)
+		hur_tif.write(peak_list[8], 9)
+		hur_tif.write(peak_list[9], 10)
 
 		hur_tif.close()
 
@@ -2800,11 +2819,12 @@ def hurrecon_plot_tracks(select="all", wind_min=33, main_title="",
 	# close land-water file
 	land_water.close()
 
-# hurrecon_plot_region creates regional plots of peak enhanced Fujita
-# scale, peak wind speed, peak wind direction, peak cardinal wind direction,
-# gale wind duration, and hurricane wind duration for a given hurricane. 
+# hurrecon_plot_region creates regional plots of peak wind speed, peak 
+# enhanced Fujita scale, peak wind direction, peak cardinal wind direction,
+# and duration of EF0, EF1, EF2, EF3, EF4, and EF5 winds for a given hurricane.
 # Variables to plot: wind_speed, fujita_scale, wind_direction, wind_compass, 
-# gale_duration, or hurricane_duration.
+# ef0_duration, ef1_duration, ef2_duration, ef3_duration, ef4_duration,
+# and ef5_duration.
 #   hur_id - hurricane id
 #   var - variable to plot
 #   positions - whether to plot original positions
@@ -2881,7 +2901,31 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 		cmap.set_under('white')
 
 	# create plot
-	if var == "fujita_scale":
+	if var == "wind_speed":
+		if np.amax(hur_tif.read(1)) > 0:
+			if main_title == "":
+				main_title = hur_id + " Peak Wind Speed"
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.title(main_title)
+			img = hur_tif.read(1)		
+			plt.imshow(img, cmap=cmap, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   m/sec")
+			show((hur_tif, 1), cmap=cmap, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No wind speed\n")
+
+
+	elif var == "fujita_scale":
 		if np.amax(hur_tif.read(2)) > 0:
 			if main_title == "":
 				main_title = hur_id + " Peak Fujita Scale"
@@ -2906,28 +2950,6 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 		else:
 			print("No Fujita values\n")
 
-	elif var == "wind_speed":
-		if np.amax(hur_tif.read(1)) > 0:
-			if main_title == "":
-				main_title = hur_id + " Peak Wind Speed"
-			fig, ax = plt.subplots(figsize=(15, 15))
-			plt.axis([lon_min, lon_max, lat_min, lat_max])
-			plt.xlabel('Longitude (degrees)')
-			plt.ylabel('Latitude (degrees)')
-			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
-			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
-			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
-			if (positions == True):
-				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
-			plt.title(main_title)
-			img = hur_tif.read(1)		
-			plt.imshow(img, cmap=cmap, vmin=0.9)
-			cbar = plt.colorbar(shrink=0.3)
-			cbar.ax.set_title("   m/sec")
-			show((hur_tif, 1), cmap=cmap, vmin=0.9)
-			plt.clf()	
-		else:
-			print("No wind speed\n")
 
 	elif var == "wind_direction":
 		if np.amax(hur_tif.read(3)) > 0:
@@ -2977,10 +2999,10 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 		else:
 			print("No wind compass\n")
 
-	elif var == "gale_duration":
+	elif var == "ef0_duration":
 		if np.amax(hur_tif.read(5)) > 0:
 			if main_title == "":
-				main_title = hur_id + " Gale Winds"
+				main_title = hur_id + " EF0 Winds"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -2991,19 +3013,19 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(main_title)
-			img = hur_tif.read(5)		
+			img = hur_tif.read(5)/60
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
-			cbar.ax.set_title("   minutes")
+			cbar.ax.set_title("   hours")
 			show((hur_tif, 5), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
-			print("No gale winds\n")
-	
-	elif var == "hurricane_duration":
+			print("No EF0 winds\n")
+
+	elif var == "ef1_duration":
 		if np.amax(hur_tif.read(6)) > 0:
 			if main_title == "":
-				main_title = hur_id + " Hurricane Winds"
+				main_title = hur_id + " EF1 Winds"
 			fig, ax = plt.subplots(figsize=(15, 15))
 			plt.axis([lon_min, lon_max, lat_min, lat_max])
 			plt.xlabel('Longitude (degrees)')
@@ -3014,17 +3036,109 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 			if (positions == True):
 				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
 			plt.title(main_title)
-			img = hur_tif.read(6)		
+			img = hur_tif.read(6)/60
 			plt.imshow(img, cmap=cmap, vmin=0.9)
 			cbar = plt.colorbar(shrink=0.3)
-			cbar.ax.set_title("   minutes")
+			cbar.ax.set_title("   hours")
 			show((hur_tif, 6), cmap=cmap, vmin=0.9)
 			plt.clf()	
 		else:
-			print("No hurricane winds\n")
+			print("No EF1 winds\n")
+
+	elif var == "ef2_duration":
+		if np.amax(hur_tif.read(7)) > 0:
+			if main_title == "":
+				main_title = hur_id + " EF2 Winds"
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.title(main_title)
+			img = hur_tif.read(7)/60
+			plt.imshow(img, cmap=cmap, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   hours")
+			show((hur_tif, 7), cmap=cmap, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No EF2 winds\n")
+
+	elif var == "ef3_duration":
+		if np.amax(hur_tif.read(8)) > 0:
+			if main_title == "":
+				main_title = hur_id + " EF3 Winds"
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.title(main_title)
+			img = hur_tif.read(8)/60
+			plt.imshow(img, cmap=cmap, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   hours")
+			show((hur_tif, 8), cmap=cmap, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No EF3 winds\n")
+
+	elif var == "ef4_duration":
+		if np.amax(hur_tif.read(9)) > 0:
+			if main_title == "":
+				main_title = hur_id + " EF4 Winds"
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.title(main_title)
+			img = hur_tif.read(9)/60
+			plt.imshow(img, cmap=cmap, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   hours")
+			show((hur_tif, 9), cmap=cmap, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No EF4 winds\n")
+	
+	elif var == "ef5_duration":
+		if np.amax(hur_tif.read(10)) > 0:
+			if main_title == "":
+				main_title = hur_id + " EF5 Winds"
+			fig, ax = plt.subplots(figsize=(15, 15))
+			plt.axis([lon_min, lon_max, lat_min, lat_max])
+			plt.xlabel('Longitude (degrees)')
+			plt.ylabel('Latitude (degrees)')
+			patches = [PolygonPatch(feature, edgecolor="black", facecolor="none", linewidth=1) for feature in features]
+			ax.add_collection(mpl.collections.PatchCollection(patches, match_original=True))
+			plt.plot(lon_list, lat_list, color='brown', linewidth=0.8)
+			if (positions == True):
+				plt.plot(lon_list, lat_list, 'o', color='brown', markersize=3)
+			plt.title(main_title)
+			img = hur_tif.read(10)/60
+			plt.imshow(img, cmap=cmap, vmin=0.9)
+			cbar = plt.colorbar(shrink=0.3)
+			cbar.ax.set_title("   hours")
+			show((hur_tif, 10), cmap=cmap, vmin=0.9)
+			plt.clf()	
+		else:
+			print("No EF5 winds\n")
 
 	else:
-		sys.exit("var must be wind_speed, fujita_scale, wind_direction, wind_compass, gale_duration, or hurricane_duration")
+		sys.exit("var must be wind_speed, fujita_scale, wind_direction, wind_compass, ef0_duration, ef1_duration, ef2_duration, ef3_duration, ef4_duration, or ef5_duration")
 
 	# close GeoTiff file
 	hur_tif.close()

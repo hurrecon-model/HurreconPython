@@ -1,10 +1,10 @@
 ## HURRECON Model
 
 The HURRECON model estimates wind speed, wind direction, enhanced Fujita scale
-wind damage, duration of gale winds, and duration of hurricane winds as a function 
-of hurricane location and maximum sustained wind speed. Results may be generated for 
-a single site or an entire region. Hurricane track and intensity data may be imported
-directly from the US National Hurricane Center's HURDAT2 database.
+wind damage, and duration of EF0 to EF5 winds as a function of hurricane location 
+and maximum sustained wind speed. Results may be generated for a single site or 
+an entire region. Hurricane track and intensity data may be imported directly 
+from the US National Hurricane Center's HURDAT2 database.
 
 HURRECON is available in both R (HurreconR) and Python (HurreconPython) versions. 
 The model is an updated version of the original HURRECON model written in Borland 
@@ -178,14 +178,14 @@ vertical direction at 20 meters per second, rounded to one of these values:
 
 The hurrecon_summarize_land_water function displays information about the current
 land-water file. The hurrecon_summarize_tracks function displays information about
-the current track files. The hurrecon_summarize_site function displays
-peak values for a single hurricane and a single site.
+the current track files. The hurrecon_summarize_site function displays peak values 
+for a single hurricane and a single site.
 
 The hurrecon_plot_site functions create time-series and scatter plots for a single 
 hurricane and time-series plots for all hurricanes for a given site. The 
 hurrecon_plot_tracks function creates a map of the land-water file with selected 
 hurricane tracks. The hurrecon_plot_region functions create maps of regional results 
-for a single hurricane and for all hurricanes.
+for a single hurricane or for all hurricanes.
 
 ## Examples
 
@@ -195,7 +195,7 @@ Sample commands for the 1935 Florida Keys hurricane and Miami FL:
 hurrecon_reformat_hurdat2(hurdat2_file="hurdat2-1851-2020-052921.txt")
 [copy hurdat2_tracks.csv to input_tracks.cvs on input directory]
 
-hurrecon_set_path("c:/hurrecon/r/east")
+hurrecon_set_path("c:/hurrecon/r/east_30km")
 
 hurrecon_create_land_water(nrows=100, ncols=120, xmn=-100, xmx=-59, ymn=23, ymx=50)
 hurrecon_extract_tracks(wind_min=70)
