@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# February 2022
+# March 2022
 
 # Python version 3.7.11
 
@@ -1107,7 +1107,7 @@ def get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list, bear_list,
 			cover_type = int(land_water_array[nrows-i-1][j])
 
 			if cover_type == 2 or water == True:
-				wspd = ss[nrows-i-1][j]
+				wspd = xx[nrows-i-1][j]
 
 				# update values if gale or higher
 				if wspd >= 17.5:
