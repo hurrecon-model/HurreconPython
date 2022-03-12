@@ -2472,12 +2472,12 @@ def hurrecon_summarize_site(hur_id, site_name, console=True):
 #   adjust - whether to subtract 360 degrees from wind directions
 #      greater than 180 degrees in scatter plot
 #   legend_loc - legend location
-#   main_title - optional title
+#   title - optional title
 # no return value
 
 def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='', 
 	xvar="datetime", yvar="wind_speed", adjust=False, legend_loc="upper right",
-	main_title=""):
+	title=""):
 	
 	# register matplotlib converters
 	from pandas.plotting import register_matplotlib_converters
@@ -2583,6 +2583,8 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 	gust_max = max(mm.gust_spd)
 
 	# get title
+	main_title = title
+
 	if main_title == "":
 		main_title = hur_id + " " + site_name
 
@@ -2622,11 +2624,11 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 #   end_year - optional end year
 #   var - variable to plot
 #   legend_loc - legend location
-#   main_title - optional title
+#   title - optional title
 # no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
-	var="wind_speed", legend_loc="upper right", main_title=""):
+	var="wind_speed", legend_loc="upper right", title=""):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2692,6 +2694,8 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 
 	gust_max = max(kk.gust_spd)
 
+	main_title = title
+
 	if main_title == "":
 		main_title = site_name
 
@@ -2727,11 +2731,11 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 #     model input (model), or none (none)
 #   wind_min - the minimum value of maximum sustained wind speed 
 #    (meters/second)
-#   main_title - optional title
+#   title - optional title
 #   colormap - color palette
 # no return value
 
-def hurrecon_plot_tracks(select="all", wind_min=33, main_title="", 
+def hurrecon_plot_tracks(select="all", wind_min=33, title="", 
 	colormap="default"):
 	
 	# get current working directory
@@ -2774,6 +2778,8 @@ def hurrecon_plot_tracks(select="all", wind_min=33, main_title="",
 		cmap = plt.get_cmap(colormap)
 
 	# get title
+	main_title = title
+
 	if main_title == "":
 		main_title = "Hurricane Tracks (" + str(wind_min) + " m/s)"
 
@@ -2828,12 +2834,12 @@ def hurrecon_plot_tracks(select="all", wind_min=33, main_title="",
 #   hur_id - hurricane id
 #   var - variable to plot
 #   positions - whether to plot original positions
-#   main_title - optional title
+#   title - optional title
 #   colormap - color palette
 # no return value
 
 def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False, 
-	main_title="", colormap="default"):
+	title="", colormap="default"):
 	
 	# get current working directory
 	cwd = os.getcwd()
@@ -2899,6 +2905,9 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 	else:
 		cmap = plt.get_cmap(colormap)
 		cmap.set_under('white')
+
+	# get title
+	main_title = title
 
 	# create plot
 	if var == "wind_speed":
@@ -3151,12 +3160,12 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False,
 #   dt - datetime in the format YYYY-MM-DDThh:mm
 #   var - variable to plot
 #   positions - whether to plot original positions
-#   main_title - optional title
+#   title - optional title
 #   colormap - color palette
 # no return value
 
 def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
-	main_title="", colormap="default"):
+	title="", colormap="default"):
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -3227,6 +3236,9 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 	else:
 		cmap = plt.get_cmap(colormap)
 		cmap.set_under('white')
+
+	# get title
+	main_title = title
 
 	# create plot
 	if var == "fujita_scale":
@@ -3340,11 +3352,11 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 # Variables to plot: efmax, ef0, ef1, ef2, ef3, ef4, or ef5.
 #   var - variable to plot
 #   tracks - whether to also plot hurricane tracks
-#   main_title - optional title
+#   title - optional title
 #   colormap - color palette
 # no return value
 
-def hurrecon_plot_region_all(var="efmax", tracks=False, main_title="",
+def hurrecon_plot_region_all(var="efmax", tracks=False, title="",
 	colormap="default"):
 	
 	# get current working directory
@@ -3410,6 +3422,9 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, main_title="",
 		summary_file = cwd + "/region-all/summary.csv"
 		check_file_exists(summary_file)
 		kk = pd.read_csv(summary_file)
+
+	# get title
+	main_title = title
 
 	# create plot
 	if var == "efmax":
