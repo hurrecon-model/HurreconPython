@@ -2833,19 +2833,26 @@ def hurrecon_plot_tracks(select="all", wind_min=33, title="",
 # and ef5_duration.
 #   hur_id - hurricane id
 #   var - variable to plot
+#   region_all - whether to plot results from hurrecon_model_region_all
 #   positions - whether to plot original positions
 #   title - optional title
 #   colormap - color palette
 # no return value
 
-def hurrecon_plot_region(hur_id, var="fujita_scale", positions=False, 
-	title="", colormap="default"):
+def hurrecon_plot_region(hur_id, var="fujita_scale", region_all=False, 
+	positions=False, title="", colormap="default"):
 	
 	# get current working directory
 	cwd = os.getcwd()
 
+	# get subdirectory
+	if region_all == True:
+		subdir = "region-all" 
+	else:
+		subdir = "region"
+
 	# read GeoTiff file
-	hur_tif_file = cwd + "/region/" + hur_id + ".tif"
+	hur_tif_file = cwd + "/" + subdir + "/" + hur_id + ".tif"
 	check_file_exists(hur_tif_file)
 	hur_tif = rio.open(hur_tif_file)
 
