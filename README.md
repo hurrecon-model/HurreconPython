@@ -150,7 +150,8 @@ hurrecon_plot_region_all
 
 The hurrecon_reformat_hurdat2 function reformats data from HURDAT2 
 for use with HURRECON. This is normally a one-time operation for a
-given version of HURDAT2.
+given version of HURDAT2. Hurricane IDs in HURDAT2 are reformatted 
+to facilitate sorting by year (e.g. AL031935 becomes AL1935-03).
 
 The hurrecon_set_path function sets the current working directory to 
 the desired directory for the current set of model runs.
@@ -192,7 +193,7 @@ for a single hurricane or for all hurricanes.
 Sample commands for the 1935 Florida Keys hurricane and Miami FL:
 
 ```{r}
-hurrecon_reformat_hurdat2(hurdat2_file="hurdat2-1851-2020-052921.txt")
+hurrecon_reformat_hurdat2(hurdat2_file="hurdat2-1851-2020-020922.txt")
 [copy hurdat2_tracks.csv to input_tracks.cvs on input directory]
 
 hurrecon_set_path("c:/hurrecon/r/east_30km")
@@ -200,21 +201,21 @@ hurrecon_set_path("c:/hurrecon/r/east_30km")
 hurrecon_create_land_water(nrows=100, ncols=120, xmn=-100, xmx=-59, ymn=23, ymx=50)
 hurrecon_extract_tracks(wind_min=70)
 
-hurrecon_model_site("AL031935", "Miami FL")
+hurrecon_model_site("AL1935-03", "Miami FL")
 hurrecon_model_site_all("Miami FL")
-hurrecon_model_region("AL031935")
-hurrecon_model_region_dt("AL031935", "1935-09-03T12:00")
+hurrecon_model_region("AL1935-03")
+hurrecon_model_region_dt("AL1935-03", "1935-09-03T12:00")
 hurrecon_model_region_all()
 
 hurrecon_summarize_land_water()
 hurrecon_summarize_tracks()
-hurrecon_summarize_site("AL031935", "Miami FL")
+hurrecon_summarize_site("AL1935-03", "Miami FL")
 
-hurrecon_plot_site("AL031935", "Miami FL")
+hurrecon_plot_site("AL1935-03", "Miami FL")
 hurrecon_plot_site_all("Miami FL")
 hurrecon_plot_tracks()
-hurrecon_plot_region("AL031935")
-hurrecon_plot_region_dt("AL031935", "1935-09-03T12:00")
+hurrecon_plot_region("AL1935-03")
+hurrecon_plot_region_dt("AL1935-03", "1935-09-03T12:00")
 hurrecon_plot_region_all()
 ```
 

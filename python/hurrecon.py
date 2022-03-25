@@ -85,6 +85,20 @@ def get_fujita_colors():
 
 	return [ef0_col, ef1_col, ef2_col, ef3_col, ef4_col, ef5_col, efx_col]
 
+# get_hur_id reformats a hurricane ID from HURDAT2 in a form that facilitates
+# sorting by year. For example: AL061938 is reformatted as AL1938-06.
+#   hd2_id - hurricane ID from HURDAT2
+# returns a reformated hurricane ID
+
+def get_hur_id(hd2_id):
+	basin = hd2_id[0:2]
+	num   = hd2_id[2:4]
+	year  = hd2_id[4:8]
+
+	hur_id = basin + year + '-' + num
+	
+	return(hur_id)
+
 # format_time_difference_hms returns a time difference formatted as
 # hours:minutes:seconds.
 #   start_time - start time
@@ -1587,7 +1601,8 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 # Hurricane Center for use with the HURRECON model. The input file is assumed
 # to be in space-delimited text format. The output file (hurdat2_tracks.csv)
 # contains full track information for each hurricane plus columns for standard 
-# datetime and Julian day with fraction.
+# datetime and Julian day with fraction. Hurricane IDs are reformatted to
+# facilitate sorting by year.
 #   hurdat2_file - name of HURDAT2 file
 #   path - optional path for input & output files
 #   console - whether to display messages in console
@@ -1629,7 +1644,7 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 		# get hurricane id, name, and number of positions
 		line_num = line_num + 1
 		row = hurdat[line_num].split(",") 
-		hur_id = row[0].strip()
+		hur_id = get_hur_id(row[0].strip())
 		name = row[1].strip()
 		positions = int(row[2].strip())
 
