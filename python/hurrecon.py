@@ -3422,7 +3422,7 @@ def hurrecon_plot_region_all(var="efmax", tracks=False, title="",
 
 	# color palettes
 	if colormap == "default":
-		if var == "efm":
+		if var == "efmax":
 			cmap = fscale
 
 		else:
