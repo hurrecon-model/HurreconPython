@@ -19,7 +19,7 @@
 # of hurricane location and maximum wind speed.
 
 # Emery R. Boose
-# March 2022
+# May 2022
 
 # Python version 3.7.11
 
@@ -1537,6 +1537,10 @@ def hurrecon_set_path(hur_path, console=True):
 # no return value
 
 def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
+	# announcement
+	if console == True:
+		print("... Creating land-water ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1595,7 +1599,7 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 
 	if console == True:
 		print("Cell height =", round(cell_height) , "kilometers")
-		print("Cell width  =", round(cell_width), "kilometers\n")
+		print("Cell width  =", round(cell_width), "kilometers")
 
 # hurrecon_reformat_hurdat2 reformats a HURDAT2 file from the National 
 # Hurricane Center for use with the HURRECON model. The input file is assumed
@@ -1609,6 +1613,10 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 # no return value
 
 def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
+	# announcement
+	if console == True:
+		print("... Reformatting Hurdat2 ...")
+
 	# output files
 	track_file = "hurdat2_tracks.csv"
 
@@ -1742,6 +1750,10 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 # no return value
 
 def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True):
+	# announcement
+	if console == True:
+		print("... Extracting tracks ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -1904,6 +1916,10 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True):
 def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True, 
 	console=True):
 
+	# announcement
+	if console == True:
+		print("... Modeling site ...")
+
 	# record total elapsed time
 	start_time = time.time()
 
@@ -2008,6 +2024,10 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True, 
 	console=True):
 
+	# announcement
+	if console == True:
+		print("... Modeling site all ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2111,6 +2131,10 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=True, 
 	console=True):
 	
+	# announcement
+	if console == True:
+		print("... Modeling region ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2194,6 +2218,10 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True, 
 	console=True):
 
+	# announcement
+	if console == True:
+		print("... Modeling region dt ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2258,6 +2286,10 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
 def hurrecon_model_region_all(width=False, time_step="", water=False, 
 	console=True, returns=False):
 	
+	# announcement
+	if console == True:
+		print("... Modeling region all ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2354,6 +2386,10 @@ def hurrecon_model_region_all(width=False, time_step="", water=False,
 # returns a string containing summary information if console is False
 
 def hurrecon_summarize_land_water(console=True):
+	# announcement
+	if console == True:
+		print("... Summarizing land-water ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2387,7 +2423,7 @@ def hurrecon_summarize_land_water(console=True):
 	st = st + "Longitude: " + str(xmn) + " to " + str(xmx) + " degrees" + "\n"
 	st = st + "Cell height: " + str(round(cell_height)) + " kilometers" + "\n"
 	st = st + "Cell width: " + str(round(cell_width)) + " kilometers" + "\n"
-	st = st + "Time Step: " + str(time_step) + " minutes" + "\n"
+	st = st + "Time Step: " + str(time_step) + " minutes"
 
 	if console == True:
 		print(st)
@@ -2400,6 +2436,10 @@ def hurrecon_summarize_land_water(console=True):
 # returns a string containing summary information if console is False
 
 def hurrecon_summarize_tracks(console=True):
+	# announcement
+	if console == True:
+		print("... Summarizing tracks ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2417,7 +2457,7 @@ def hurrecon_summarize_tracks(console=True):
 	st = "Number of storms = " + str(ii_rows) + "\n"
 	st = st + "Number of positions = " + str(positions_total) + "\n"
 	st = st + "Minimum peak wind = " + str(wind_peak_min) + " m/s" + "\n"
-	st = st + "Maximum peak wind = " + str(wind_peak_max) + " m/s" + "\n"
+	st = st + "Maximum peak wind = " + str(wind_peak_max) + " m/s"
 
 	if console == True:
 		print(st)
@@ -2432,6 +2472,10 @@ def hurrecon_summarize_tracks(console=True):
 # returns a string containing summary information if console is False
 
 def hurrecon_summarize_site(hur_id, site_name, console=True):
+	# announcement
+	if console == True:
+		print("... Summarizing site ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2463,7 +2507,7 @@ def hurrecon_summarize_site(hur_id, site_name, console=True):
 	if pk.ef4[0] > 0:
 		st = st + "EF4: " + str(round(pk.ef4[0], 1)) + " hours" + "\n"
 	if pk.ef5[0] > 0:
-		st = st + "EF5: " + str(round(pk.ef5[0], 1)) + " hours" + "\n"
+		st = st + "EF5: " + str(round(pk.ef5[0], 1)) + " hours"
 
 	if console == True:
 		print(st)
@@ -2488,12 +2532,17 @@ def hurrecon_summarize_site(hur_id, site_name, console=True):
 #      greater than 180 degrees in scatter plot
 #   legend_loc - legend location
 #   title - optional title
+#   console - whether to display messages in console
 # no return value
 
 def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='', 
 	xvar="datetime", yvar="wind_speed", adjust=False, legend_loc="upper right",
-	title=""):
+	title="", console=True):
 	
+	# announcement
+	if console == True:
+		print("... Plotting site ...")
+
 	# register matplotlib converters
 	from pandas.plotting import register_matplotlib_converters
 	register_matplotlib_converters()
@@ -2640,10 +2689,15 @@ def hurrecon_plot_site(hur_id, site_name, start_datetime='', end_datetime='',
 #   var - variable to plot
 #   legend_loc - legend location
 #   title - optional title
+#   console - whether to display messages in console
 # no return value
 
 def hurrecon_plot_site_all(site_name, start_year='', end_year='', 
-	var="wind_speed", legend_loc="upper right", title=""):
+	var="wind_speed", legend_loc="upper right", title="", console=True):
+
+	# announcement
+	if console == True:
+		print("... Plotting site all ...")
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -2748,11 +2802,16 @@ def hurrecon_plot_site_all(site_name, start_year='', end_year='',
 #    (meters/second)
 #   title - optional title
 #   colormap - color palette
+#   console - whether to display messages in console
 # no return value
 
 def hurrecon_plot_tracks(select="all", wind_min=33, title="", 
-	colormap="default"):
+	colormap="default", console=True):
 	
+	# announcement
+	if console == True:
+		print("... Plotting tracks ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -2852,11 +2911,16 @@ def hurrecon_plot_tracks(select="all", wind_min=33, title="",
 #   positions - whether to plot original positions
 #   title - optional title
 #   colormap - color palette
+#   console - whether to display messages in console
 # no return value
 
 def hurrecon_plot_region(hur_id, var="fujita_scale", region_all=False, 
-	positions=False, title="", colormap="default"):
+	positions=False, title="", colormap="default", console=True):
 	
+	# announcement
+	if console == True:
+		print("... Plotting region ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
@@ -3184,10 +3248,15 @@ def hurrecon_plot_region(hur_id, var="fujita_scale", region_all=False,
 #   positions - whether to plot original positions
 #   title - optional title
 #   colormap - color palette
+#   console - whether to display messages in console
 # no return value
 
 def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
-	title="", colormap="default"):
+	title="", colormap="default", console=True):
+
+	# announcement
+	if console == True:
+		print("... Plotting region dt ...")
 
 	# get current working directory
 	cwd = os.getcwd()
@@ -3376,11 +3445,16 @@ def hurrecon_plot_region_dt(hur_id, dt, var="fujita_scale", positions=False,
 #   tracks - whether to also plot hurricane tracks
 #   title - optional title
 #   colormap - color palette
+#   console - whether to display messages in console
 # no return value
 
 def hurrecon_plot_region_all(var="efmax", tracks=False, title="",
-	colormap="default"):
+	colormap="default", console=True):
 	
+	# announcement
+	if console == True:
+		print("... Plotting region all ...")
+
 	# get current working directory
 	cwd = os.getcwd()
 
