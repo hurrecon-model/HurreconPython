@@ -14,12 +14,14 @@
 #   License along with this program.  If not, see
 #   <http://www.gnu.org/licenses/>.
 
-# The HURRECON Model estimates wind speed, wind direction, enhanced Fujita 
-# scale wind damage, and duration of gale and hurricane winds as a function
-# of hurricane location and maximum wind speed.
+# The HURRECON model estimates wind speed, wind direction, enhanced Fujita 
+# scale wind damage, and duration of EF0 to EF5 winds as a function of hurricane 
+# location and maximum sustained wind speed. Results may be generated for a 
+# single site or an entire region. Hurricane track and intensity data may be 
+# imported directly from the US National Hurricane Center's HURDAT2 database.
 
 # Emery R. Boose
-# May 2022
+# July 2022
 
 # Python version 3.7.11
 
@@ -1522,6 +1524,20 @@ def hurrecon_set_path(hur_path, console=True):
 	if console == True:
 		print("Path set to", hur_path)
 
+# hurrecon_get_path returns the current path for a set of model runs.
+#   console - whether to display messages in console
+#   results - whether to return results
+# returns current path if results is True
+
+def hurrecon_get_path(console=True, results=False):
+	hur_path = os.getcwd()
+
+	if console == True:
+		print(hur_path)
+
+	if results == True:
+		return hur_path;
+
 # hurrecon_create_land_water creates a land-water raster file in GeoTiff 
 # format from vector boundary files in shapefile format. The land-water file
 # (land_water.tif) is assumed to be aligned with lines of latitude and 
@@ -1534,9 +1550,13 @@ def hurrecon_set_path(hur_path, console=True):
 #   ymn - minimum latitude (degrees)
 #   ymx - maximum latitude (degrees)
 #   console - whether to display messages in console
-# no return value
+#   save - whether to save results to a GeoTiff file
+#   results - whether to return results
+# returns a land-water raster if results is True
 
-def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
+def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True, 
+	save=True, results=False):
+	
 	# announcement
 	if console == True:
 		print("... Creating land-water ...")
@@ -1586,33 +1606,43 @@ def hurrecon_create_land_water(nrows, ncols, xmn, xmx, ymn, ymx, console=True):
 			else:
 				out_image[0][i][j] = 2
 
-	# save to file
-	dest = rio.open(lw_tif_file, "w", **out_meta)
-	dest.write(out_image)
-	dest.close()
-
-	# calculate cell dimensions in kilometers
-	lat_avg = (ymx + ymn)/2
-
-	cell_height = 111*(ymx-ymn)/nrows
-	cell_width = 111*(xmx-xmn)*math.cos(lat_avg*math.pi/180)/ncols
-
+	# display cell dimensions in kilometers
 	if console == True:
+		lat_avg = (ymx + ymn)/2
+
+		cell_height = 111*(ymx-ymn)/nrows
+		cell_width = 111*(xmx-xmn)*math.cos(lat_avg*math.pi/180)/ncols
+
 		print("Cell height =", round(cell_height) , "kilometers")
 		print("Cell width  =", round(cell_width), "kilometers")
+
+	# save to file
+	if save == True:
+		dest = rio.open(lw_tif_file, "w", **out_meta)
+		dest.write(out_image)
+		dest.close()
+
+	# return results
+	if results == True:
+		return out_image
 
 # hurrecon_reformat_hurdat2 reformats a HURDAT2 file from the National 
 # Hurricane Center for use with the HURRECON model. The input file is assumed
 # to be in space-delimited text format. The output file (hurdat2_tracks.csv)
 # contains full track information for each hurricane plus columns for standard 
 # datetime and Julian day with fraction. Hurricane IDs are reformatted to
-# facilitate sorting by year.
+# facilitate sorting by year. The user must specify the path and the name
+# of the HURDAT2 file.
+#   path - path for input & output files
 #   hurdat2_file - name of HURDAT2 file
-#   path - optional path for input & output files
 #   console - whether to display messages in console
-# no return value
+#   save - whether to save as a CSV file
+#   results - whether to return results
+# returns a data frame of tracks if results is True
 
-def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
+def hurrecon_reformat_hurdat2(path, hurdat2_file, console=True, save=True, 
+	results=False):
+	
 	# announcement
 	if console == True:
 		print("... Reformatting Hurdat2 ...")
@@ -1718,16 +1748,19 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 		tracks_jd_list, tracks_status_list, tracks_latitude_list, tracks_longitude_list, tracks_wind_max_list)), 
 		columns=tracks_cols)
 
-	# save to file
-	tracks.to_csv(track_file, index=False)
-
-	# get number of storms
-	ii = set(tracks_hur_id_list)
-
 	# display number of storms
 	if console == True:
+		ii = set(tracks_hur_id_list)
 		print("\nNumber of storms = ", len(ii))
 		print("Number of observations = ", len(tracks))
+
+	# save to file or return
+	if save == True:
+		tracks.to_csv(track_file, index=False)
+	
+	# return results
+	if results == True:
+		return tracks
 
 # hurrecon_extract_tracks extracts track data from an input track file
 # (input_tracks.csv) created from HURDAT2 using hurrecon_reformat_hurdat2
@@ -1747,9 +1780,13 @@ def hurrecon_reformat_hurdat2(hurdat2_file, path="", console=True):
 #     (meters/second)
 #   status - whether to limit search to storms with hurricane status
 #   console - whether to display messages in console
-# no return value
+#   save - whether to save results as CSV files
+#   results - whether to return results
+# returns a list of data frames if results is True
 
-def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True):
+def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True, 
+	save=True, results=False):
+	
 	# announcement
 	if console == True:
 		print("... Extracting tracks ...")
@@ -1885,15 +1922,20 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True):
 	tracks_all = pd.DataFrame(data=list(zip(tracks_all_hur_id_list, tracks_all_date_time_list, 
 		tracks_all_latitude_list, tracks_all_longitude_list)), columns=tracks_all_cols)
 
-	# save to file
-	ids.to_csv(ids_file, index=False)
-	tracks.to_csv(track_file, index=False)
-	tracks_all.to_csv(track_all_file, index=False)
-
 	# display number of storms
 	if console == True:
 		print("\nNumber of storms = ", len(ids))
 		print("Number of observations = ", len(tracks))
+
+	# save to file
+	if save == True:
+		ids.to_csv(ids_file, index=False)
+		tracks.to_csv(track_file, index=False)
+		tracks_all.to_csv(track_all_file, index=False)
+
+	# return results
+	if results == True:
+		return [ids, tracks, tracks_all]
 
 
 ### MODELING FUNCTIONS ####################################
@@ -1903,18 +1945,18 @@ def hurrecon_extract_tracks(margin=0, wind_min=33, status=True, console=True):
 # damage for a given hurricane and site. If width is True, the radius of 
 # maximum wind (rmw) and scaling parameter (s_par) for this hurricane are 
 # used; otherwise values for ALL are used. If save is True, results are 
-# saved to a CSV file on the site subdirectory; otherwise results are returned
-# as a data frame.
+# saved to a CSV file on the site subdirectory.
 #   hur_id - hurricane id
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   save - whether to save results to a CSV file
 #   console - whether to display messages in console
-# returns a data frame of results if save is False
+#   results - whether to return results
+# returns a data frame of model results if results is True
 
 def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True, 
-	console=True):
+	console=True, results=False):
 
 	# announcement
 	if console == True:
@@ -1997,7 +2039,7 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 	if console == True:
 		print(format_time_difference_ms(start_time, time.time()), " ms")
 
-	# output
+	# output to file
 	if save == True:
 		# save modeled data to CSV file
 		modeled_file = cwd + "/site/" + hur_id + " " + site_name + ".csv"
@@ -2005,24 +2047,26 @@ def hurrecon_model_site(hur_id, site_name, width=False, time_step=1, save=True,
 	
 		if console == True:
 			print("\rSaving to", modeled_file)
-	else:
-		# return modeled data as data frame
+
+	# return results
+	if results == True:
 		return mm
 
 # hurrecon_model_site_all creates a table of peak values for all hurricanes
 # for a given site. If width is True, the radius of maximum wind (rmw) and 
 # scaling parameter (s_par) for the given hurricane are used; otherwise values
 # for ALL are used. If save is True, results are saved to a CSV file on the 
-# site-all subdirectory; otherwise results are returned as a data frame.
+# site-all subdirectory.
 #   site_name - name of site
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   save - whether to save results to a CSV file
 #   console - whether to display messages in console
-# returns a data frame of results if save is False
+#   results - whether to return results
+# returns a data frame of model results if results is True
 
 def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True, 
-	console=True):
+	console=True, results=False):
 
 	# announcement
 	if console == True:
@@ -2062,7 +2106,7 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 
 		# get modeled output
 		mm = hurrecon_model_site(hur_id, site_name, width, time_step, save=False,
-			console=False)
+			console=False, results=True)
 
 		# get peak values
 		pk = get_peak_values(hur_id, site_name, mm)
@@ -2100,7 +2144,7 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 		gspd_list, ef_list, ef0_list, ef1_list, ef2_list, ef3_list, ef4_list, ef5_list)), 
 		columns=peak_values_cols)
 
-	# output
+	# save to file
 	if (save == True):
 		# save modeled data to CSV file
 		site_peak_file = cwd + "/site-all/" + site_name + " Peak Values.csv"
@@ -2108,8 +2152,9 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 	
 		if console == True:
 			print("Saving to", site_peak_file)
-	else:
-		# return modeled data as data frame
+	
+	# return results
+	if results == True:
 		return peak_values
 
 # hurrecon_model_region calculates peak wind speed (meters/second), peak 
@@ -2126,10 +2171,11 @@ def hurrecon_model_site_all(site_name, width=False, time_step=1, save=True,
 #   water - whether to caculate results over water
 #   save - whether to save results to a GeoTiff file
 #   console - whether to display messages in console
-# returns a list of 10 raster arrays if save is False
+#   results - whether to return results
+# returns a list of 10 raster arrays if results is True
 
 def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=True, 
-	console=True):
+	console=True, results=False):
 	
 	# announcement
 	if console == True:
@@ -2164,7 +2210,7 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 	peak_list = get_regional_peak_wind(hur_id, lat_list, lon_list, wmax_list,
 		bear_list, spd_list, width, time_step, water, console)
 
-	# output
+	# save to file
 	if (save == True):
 		# read land-water file
 		land_water_file = cwd + "/input/land_water.tif"
@@ -2195,7 +2241,8 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 		if console == True:
 			print("Saving to", hur_tif_file)
 
-	else:
+	# return results
+	if results == True:
 		# return modeled values as a list of 6 raster arrays
 		return peak_list
 
@@ -2205,18 +2252,18 @@ def hurrecon_model_region(hur_id, width=False, time_step="", water=False, save=T
 # True, the radius of maximum wind (rmw) and scaling parameter (s_par) for 
 # this hurricane are used; otherwise values for ALL are used . If water is 
 # False, results are calculated for land areas only. If save is True, results
-# are saved as a GeoTiff file on the region-dt subdirectory; otherwise results
-# are returned as a list of 4 raster arrays.
+# are saved as a GeoTiff file on the region-dt subdirectory.
 #   hur_id - hurricane id
 #   dt - datetime in the format YYYY-MM-DDThh:mm
 #   width - whether to use width parameters for the specified hurricane
 #   water - whether to caculate results over water
 #   save - whether to save results to a GeoTiff file
 #   console - whether to display messages in console
-# returns a list of 4 rasters if save is False
+#   results - whether to return results
+# returns a list of 4 rasters if results is True
 
 def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True, 
-	console=True):
+	console=True, results=False):
 
 	# announcement
 	if console == True:
@@ -2235,7 +2282,7 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
 	datetime_list = get_regional_datetime(hur_id, pp.lat[0], pp.lon[0], pp.wmax[0], 
 		pp.bear[0], pp.spd[0], width, water, console)
 
-	# output
+	# save to file
 	if (save == True):
 		# read land-water file
 		land_water_file = cwd + "/input/land_water.tif"
@@ -2261,7 +2308,8 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
 		if console == True:
 			print("Saving to", hur_tif_file)
 
-	else:
+	# return results
+	if results == True:
 		# return modeled values as a list of 4 raster arrays
 		return datetime_list
 
@@ -2275,16 +2323,15 @@ def hurrecon_model_region_dt(hur_id, dt, width=False, water=False, save=True,
 # land areas only. Results for each hurricane are saved in a GeoTiff file on 
 # the region-all subdirectory. Summary results for all hurricanes (summary.tif,
 # summary.csv) are also calculated and saved to the region-all subdirectory.
-# If returns is True, summary values are returned.
 #   width - whether to use width parameters for the specified hurricane
 #   time_step - time step (minutes)
 #   water - whether to calculate results over water
 #   console - whether to display messages in console
-#   returns - whether to return summary values
-# returns a list containing a data frame and a list of raster arrays
+#   results - whether to return results
+# returns a list containing a summary raster and data frame if results is True
 
 def hurrecon_model_region_all(width=False, time_step="", water=False, 
-	console=True, returns=False):
+	console=True, results=False):
 	
 	# announcement
 	if console == True:
@@ -2330,7 +2377,7 @@ def hurrecon_model_region_all(width=False, time_step="", water=False,
 
 		# generate & save regional results
 		peak_list = hurrecon_model_region(hur_id, width, time_step, water, 
-			save=False, console=False)
+			save=False, console=False, results=True)
 
 		# open GeoTiff file
 		hur_tif_file = cwd + "/region-all/" + hur_id + ".tif"
@@ -2374,8 +2421,8 @@ def hurrecon_model_region_all(width=False, time_step="", water=False,
 		reg_all_dir = cwd + "/region-all/"
 		print("Saving to", reg_all_dir)
 
-	# return a list of summary results
-	if returns == True:
+	# return results
+	if results == True:
 		return [kk, sum_list]
 
 ### SUMMARIZING FUNCTIONS #################################
@@ -2383,9 +2430,10 @@ def hurrecon_model_region_all(width=False, time_step="", water=False,
 # hurrecon_summarize_land_water displays information about the current 
 # land-water file (land_water.tif) in the console.
 #   console - whether to display messages in console
-# returns a string containing summary information if console is False
+#   results - whether to return results
+# returns a string containing summary information if results is True
 
-def hurrecon_summarize_land_water(console=True):
+def hurrecon_summarize_land_water(console=True, results=False):
 	# announcement
 	if console == True:
 		print("... Summarizing land-water ...")
@@ -2425,17 +2473,21 @@ def hurrecon_summarize_land_water(console=True):
 	st = st + "Cell width: " + str(round(cell_width)) + " kilometers" + "\n"
 	st = st + "Time Step: " + str(time_step) + " minutes"
 
+	# display results
 	if console == True:
 		print(st)
-	else:
+	
+	# return results
+	if results == True:
 		return st
 
 # hurrecon_summarize_tracks displays information about the current ids 
 # file (ids.csv) in the console.
 #   console - whether to display messages in console
-# returns a string containing summary information if console is False
+#   results - whether to return results
+# returns a string containing summary information if results is True
 
-def hurrecon_summarize_tracks(console=True):
+def hurrecon_summarize_tracks(console=True, results=False):
 	# announcement
 	if console == True:
 		print("... Summarizing tracks ...")
@@ -2459,9 +2511,12 @@ def hurrecon_summarize_tracks(console=True):
 	st = st + "Minimum peak wind = " + str(wind_peak_min) + " m/s" + "\n"
 	st = st + "Maximum peak wind = " + str(wind_peak_max) + " m/s"
 
+	# display results
 	if console == True:
 		print(st)
-	else:
+	
+	# return results
+	if results == True:
 		return st
 
 # hurrecon_summarize_site displays peak values for a given hurricane
@@ -2469,9 +2524,10 @@ def hurrecon_summarize_tracks(console=True):
 #   hur_id - hurricane id
 #   site_name - name of site
 #   console - whether to display messages in console
-# returns a string containing summary information if console is False
+#   results - whether to return results
+# returns a string containing summary information if results is True
 
-def hurrecon_summarize_site(hur_id, site_name, console=True):
+def hurrecon_summarize_site(hur_id, site_name, console=True, results=False):
 	# announcement
 	if console == True:
 		print("... Summarizing site ...")
@@ -2509,9 +2565,12 @@ def hurrecon_summarize_site(hur_id, site_name, console=True):
 	if pk.ef5[0] > 0:
 		st = st + "EF5: " + str(round(pk.ef5[0], 1)) + " hours"
 
+	# display results
 	if console == True:
 		print(st)
-	else:
+	
+	# return results
+	if results == True:
 		return st
 
 ### PLOTTING FUNCTIONS ####################################
